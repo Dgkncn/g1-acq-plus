@@ -15,6 +15,7 @@
   var LEGACY_TARGET = "g1.2tb.ai.annual";
   var SCAN_KEY = "g1.sku.scan.v1";
   var TEST_KEY = "g1.pro.annual.test.v1";
+  var PRO_SOURCE_PREFIXES = ["g1.ios.ai.2tb.", "g1.ios.2tb."];
 
   var PRESET_SKUS = [
     { sku: "g1.2tb.ai.18months_eft", label: "★ Pro 5TB · 18个月 $0 免费试用 (eft-18months)", tag: "FREE 18M" },
@@ -112,6 +113,10 @@
       var out = { id: row.id, count: count(row.count) };
       if (withTime) {
         out.lastSeen = text(row.lastSeen, 32);
+        out.isProSku = typeof row.isProSku === "boolean" ? row.isProSku :
+          PRO_SOURCE_PREFIXES.some(function (prefix) {
+            return row.id.indexOf(prefix) === 0 && row.id.length > prefix.length;
+          });
       } else {
         out.to = sku(row.to) || (row.id.indexOf("g1.ios.2tb.") === 0 ? defaultTarget || "" : "");
         out.fallback = row.fallback === true;
@@ -191,7 +196,8 @@
     test: {
       version: text(testRaw.version, 32),
       updatedAt: text(testRaw.updatedAt, 32),
-      sourcePrefix: "g1.ios.2tb.",
+      sourcePrefix: PRO_SOURCE_PREFIXES.indexOf(testRaw.sourcePrefix) >= 0 ? testRaw.sourcePrefix :
+        testRaw.version ? PRO_SOURCE_PREFIXES[1] : "",
       target: recordedTarget,
       targetOrigin: targetOrigin,
       status: text(testRaw.status, 32),
@@ -231,7 +237,8 @@
     return "<div class=scroll><table><thead><tr><th>完整商品编号</th><th>次数</th>" +
       (withTime ? "<th>最近发现时间（UTC）</th>" : "<th>实际目标 SKU</th><th>备用档</th>") + "</tr></thead><tbody>" +
       items.map(function (row) {
-        return "<tr><td><code>" + escape(row.id) + "</code></td><td>" + row.count + "</td>" +
+        var proBadge = row.isProSku ? " <span class=badge>2TB / Pro</span>" : "";
+        return "<tr><td><code>" + escape(row.id) + "</code>" + proBadge + "</td><td>" + row.count + "</td>" +
           (withTime ? "<td>" + escape(row.lastSeen) + "</td>" :
             "<td><code>" + escape(row.to || "未记录") + "</code></td><td>" + fallbackName(row) + "</td>") + "</tr>";
       }).join("") + "</tbody></table></div>";
@@ -275,12 +282,12 @@
     "<nav class=actions aria-label=报告操作><form method=get action=\"" + ROOT + "\"><button type=submit name=format value=json>导出 JSON</button></form><a href=\"" + ROOT + "\">刷新报告</a></nav>",
     clearMessage ? "<p style=\"background:#fff8db;padding:12px;border-radius:8px;border:1px solid #e6d087\">" + escape(clearMessage) + "</p>" : "",
     "<section><h2>一键切换 2TB / Pro 5TB 隐藏目标 SKU</h2>",
-    "<p>当前生效的 <code>g1.ios.2tb.*</code> 改写目标：<code><strong>" + escape(CONFIGURED_TARGET) + "</strong></code></p>",
+    "<p>当前配置的 2TB / Pro 目标：<code><strong>" + escape(CONFIGURED_TARGET) + "</strong></code></p>",
     "<p class=note>点击下方任意行的「一键切换」即可在手机本地切换目标 SKU，无需修改脚本；切换后重新进入 Google App → Google One 管理页即可触发新 SKU 改写。Ultra 20TB / 30TB 自动保持 <code>g1.20tb.1month_eft.acq</code> / <code>g1.ai.ultra.1month_eft.acq</code>（自动回退 90p 1折）。</p>",
     presetTable(), "</section>",
     "<section><h2>最近一次三档映射</h2>",
     "<p>版本：" + escape(report.test.version || "暂无") + "<br>状态：" + escape(status) + "；总替换次数：" + report.test.hitCount + "；其中 2TB/Pro：" + report.test.annualHitCount + "</p>",
-    "<p>2TB 源前缀：<code>g1.ios.2tb.</code><br>该次记录的 2TB 目标：<code>" + escape(report.test.target || "暂无记录") + "</code><br>执行时间（UTC）：" + escape(report.test.updatedAt || "暂无") + "</p>",
+    "<p>该次记录的 2TB 源前缀：<code>" + escape(report.test.sourcePrefix || "暂无记录") + "</code><br>该次记录的 2TB 目标：<code>" + escape(report.test.target || "暂无记录") + "</code><br>执行时间（UTC）：" + escape(report.test.updatedAt || "暂无") + "</p>",
     table(report.test.matchedFrom, false), "</section>",
     "<section><h2>采集运行记录</h2>",
     "<p>实际采集脚本：<code>" + escape(report.scan.version || "暂无记录") + "</code><br>" + scanVersionStatus + "</p>",

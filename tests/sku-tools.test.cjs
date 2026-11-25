@@ -408,6 +408,47 @@ test("collector passes through on storage failure", () => {
   assert(result.logs.some(line => line.includes("saved=no")));
 });
 
+test("passive collection identifies complete Pro IDs without rewriting the response", () => {
+  const newSource = "g1.ios.ai.2tb.fixture";
+  const ids = [newSource, SOURCE, "g1.ios.ai.2tb.", "g1.ios.ai.2tbx.fixture", TWENTY];
+  const priorMapping = JSON.stringify({ schemaVersion: 1, status: "no-match" });
+  const storage = new Map([[TEST_KEY, priorMapping]]);
+  const result = run("g1-acq.js", {
+    url: "https://one.google.com/plans",
+    body: JSON.stringify(ids),
+    storage
+  });
+  const scan = get(storage, SCAN_KEY);
+  const byId = new Map(scan.skus.map(row => [row.id, row.isProSku]));
+  assert.deepEqual(ids.map(id => byId.get(id)), [true, true, false, false, false]);
+  assert.deepEqual(result.payload, {});
+  assert.equal(storage.get(TEST_KEY), priorMapping);
+
+  const report = JSON.parse(run("g1-sku-report.js", { url: REPORT + "?format=json", storage }).payload.response.body);
+  assert.deepEqual(report.scan.skus, scan.skus);
+});
+
+test("report identifies complete Pro IDs from passive scan records", () => {
+  const newSource = "g1.ios.ai.2tb.fixture";
+  const ids = [newSource, SOURCE, "g1.ios.ai.2tb.", "g1.ios.ai.2tbx.fixture", TWENTY];
+  const storage = new Map([[SCAN_KEY, JSON.stringify({
+    schemaVersion: 1,
+    skus: ids.map(id => ({ id, count: 1 }))
+  })], [TEST_KEY, JSON.stringify({
+    schemaVersion: 1,
+    version: "g1-acq-v8.0",
+    sourcePrefix: "g1.ios.ai.2tb."
+  })]]);
+  const before = storage.get(SCAN_KEY);
+  const html = run("g1-sku-report.js", { url: REPORT, storage }).payload.response.body;
+  const report = JSON.parse(run("g1-sku-report.js", { url: REPORT + "?format=json", storage }).payload.response.body);
+  const byId = new Map(report.scan.skus.map(row => [row.id, row.isProSku]));
+  assert.deepEqual(ids.map(id => byId.get(id)), [true, true, false, false, false]);
+  assert(html.includes("<code>" + newSource + "</code> <span class=badge>2TB / Pro</span>"));
+  assert.equal(report.test.sourcePrefix, "g1.ios.ai.2tb.");
+  assert.equal(storage.get(SCAN_KEY), before);
+});
+
 test("report displays captured IDs and test sources without external assets", () => {
   const storage = new Map();
   run("g1-sku-scan.js", { body: SOURCE, storage });

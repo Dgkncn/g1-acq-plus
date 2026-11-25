@@ -235,7 +235,11 @@
       recentResponses: recentResponses.slice(-RECENT_LIMIT),
       limit: SCAN_LIMIT,
       truncated: truncated,
-      skus: ids.sort().map(function (id) { return byId[id]; })
+      skus: ids.sort().map(function (id) {
+        var row = byId[id];
+        row.isProSku = /^g1\.ios\.(?:ai\.)?2tb\.[A-Za-z0-9._-]+$/.test(id);
+        return row;
+      })
     };
     var stored = false;
     try {
