@@ -1,48 +1,343 @@
-/* Google One combined 2TB / Pro 5TB / 20TB / 30TB / 100GB / 200GB mappings for Shadowrocket.
+/* Google One & Gemini combined 2TB / Pro 5TB / Ultra 20TB / 30TB mappings for Shadowrocket.
  *
  * Attribution & Credits:
  *   - Based on the open-source project `crhywun/g1-acq` (https://github.com/crhywun/g1-acq) by @crhywun
+ *   - v7.11.0 0.05-discount / 1-yuan Pro (`com.google.gemini.2tb.ai.m.3month_ip_99p`) preset contributed by @duwqijlk (PR #8)
  *   - Ultra 20TB/30TB 1-month free trial mapping contributed by @cehomecambodia-lang (PR #3)
- *   - Extended in v8.0 with newly discovered 18-month / 15-month / 12-month / 9-month / 6-month $0 free trial
- *     and discount SKUs from exhaustive Google Play BillingClient catalog scanning, plus Safari interactive target switching.
+ *   - Extended in v9.0 (g1-acq-plus) with:
+ *       1) Full `com.google.gemini.*` / `com.google.one.*` / `g1.*` SKU namespace & custom rule engine
+ *       2) 0.05折/0.1折 Pro (`com.google.gemini.2tb.ai.m.3month_ip_99p` -> IN ₹10≈$0.11/mo, ID Rp 3,000≈$0.18/mo, SG S$0.48≈$0.35/mo)
+ *       3) Turkey Legacy Ultra 20TB (`g1.ios.20tb.m`, ₺1,989/mo) & 30TB (`g1.ios.30tb.m`, ₺2,949.99/mo) & 2TB Annual (`g1.ios.2tb.y`, ₺499.99/yr)
+ *       4) 18M/15M/12M/6M $0 Free Trial SKUs (`g1.2tb.ai.18months_eft`, `g1.2tb.ai.12months_eft`, `g1.2tb.ai.subs_variant`)
+ *       5) Dual support for both Google App (`/ai?`) and standalone Google One App (`batchexecute` / `/plans`)
  */
 "use strict";
 
-(function () {
-  var VERSION = "g1-acq-v8.0";
+function createG1MappingConfig(store) {
+  var KEY = "g1.sku.mappings.v1";
+  var LIMIT = 30;
+  var DEFAULT_REVISION = "defaults-v9-99p";
   var SOURCE_PREFIX = "g1.ios.2tb.";
-  var TARGET_OVERRIDE_KEY = "g1.target.override.v1";
+  var READ_ERROR = "本地映射存储暂未就绪，本次保持响应原样。";
+  var CONFIG_ERROR = "映射配置格式异常，当前暂停改写；请恢复默认后重新编辑。";
+  var WRITE_ERROR = "保存结果未通过回读核对，请刷新页面查看当前配置。";
+  var REVISION_ERROR = "配置已变化，本次未保存；页面已载入最新规则，请重新编辑。";
+  var RULE_FIELDS = ["id", "match", "from", "to", "enabled"];
+  var RECORD_FIELDS = ["schemaVersion", "revision", "updatedAt", "customized", "rules"];
 
-  // Default target for 2TB / Pro 5TB: newly discovered 18-month $0 free trial (can be switched in Safari at https://one.google.com/g1-sku-report)
-  var DEFAULT_TARGET = "g1.2tb.ai.18months_eft";
+  function defaults() {
+    return [
+      { id: "default-2tb", match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true },
+      { id: "default-20tb", match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
+      { id: "default-30tb", match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.3months_ip_75p.acq", enabled: true }
+    ];
+  }
 
-  // Priority chain for 2TB / Pro 5TB when auto-selecting from response body
-  var PRO_CHAIN = [
-    "g1.2tb.ai.18months_eft",
-    "g1.2tb.ai.15months_eft",
-    "g1.2tb.ai.12months_eft",
-    "g1.2tb.ai.subs_variant",
-    "g1.play.2tb.ai.student",
-    "g1.2tb.ai.6months_eft",
-    "g1.2tb.ai.4months_eft",
-    "g1.2tb.ai.3months_eft",
-    "g1.2tb.ai.2months_eft",
-    "g1.2tb.1year_eft",
-    "g1.2tb.6months_eft",
-    "g1.2tb.ai.12months_ip_90p",
-    "g1.2tb.ai.3months_ip_90p.acq",
-    "g1.2tb.ai.1month_ip_95p.acq"
-  ];
+  function presets() {
+    return [
+      {
+        id: "pro-1yuan",
+        title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月）",
+        description: "实测神级路径：把 Ultra 5x (20TB) 改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro 2TB/5TB。",
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "prefix", from: SOURCE_PREFIX, to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
+        ]
+      },
+      {
+        id: "tr-ultra-legacy",
+        title: "🇹🇷 土区 Ultra 20x / 30TB & 20TB 老定价直购",
+        description: "剥离 .v2 与 .ai.pro 后缀，调用土区 Apple Store 未涨价老 SKU：30TB 仅 ₺2,949.99/月（约3折），20TB 仅 ₺1,989.99/月（约4.1折），2TB 仅 ₺359.99/月。",
+        rules: [
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ios.30tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.ios.20tb.m", enabled: true }
+        ]
+      },
+      {
+        id: "ultra-75p",
+        title: "⚡ Ultra 20TB / 30TB · 三个月 2.5折 (75p)",
+        description: "v7.8+ 现役可用 Ultra 折扣档（原 90p 一折已拉闸）：20TB 与 30TB 切换至三个月 75% OFF（实付 25%）。",
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.3months_ip_75p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.3months_ip_75p.acq", enabled: true }
+        ]
+      },
+      {
+        id: "ultra-1m-free",
+        title: "🎁 Ultra 20TB / 30TB · 1个月 $0 免费试用",
+        description: "尝试调起 Ultra 20TB (g1.20tb.1month_eft.acq) 与 30TB (g1.ai.ultra.1month_eft.acq) 1个月 $0 免费试用。",
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.1month_eft.acq", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.1month_eft.acq", enabled: true }
+        ]
+      },
+      {
+        id: "pro-12months-90p",
+        title: "💎 2TB / Pro · 全年 12个月 1折 (90p)",
+        description: "将 g1.ios.2tb.* 前缀统一改写为 g1.2tb.ai.12months_ip_90p（连续 12 个月 90% OFF 一折，$1.99/月）。",
+        rules: [
+          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true }
+        ]
+      },
+      {
+        id: "pro-18m-free",
+        title: "👑 2TB / Pro 5TB · 18个月 $0 免费试用 (eft)",
+        description: "将 g1.ios.2tb.* 改写为全量扫描发现的 18个月免费试用档 g1.2tb.ai.18months_eft。",
+        rules: [
+          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.18months_eft", enabled: true }
+        ]
+      },
+      {
+        id: "pro-12m-free",
+        title: "👑 2TB / Pro 5TB · 12个月 $0 免费试用 (eft)",
+        description: "将 g1.ios.2tb.* 改写为 12个月免费试用档 g1.2tb.ai.12months_eft（或手动换为 g1.2tb.ai.subs_variant）。",
+        rules: [
+          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_eft", enabled: true }
+        ]
+      }
+    ];
+  }
 
-  var SKU_MAP = {
-    "g1.ios.20tb.m.v2": "g1.20tb.1month_eft.acq",
-    "g1.ios.30tb.ai.pro.m": "g1.ai.ultra.1month_eft.acq"
+  function validSku(value) {
+    return typeof value === "string" &&
+      /^(?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]{0,159}[A-Za-z0-9_-]$(?![\s\S])/.test(value);
+  }
+
+  function validPrefix(value) {
+    return typeof value === "string" &&
+      /^(?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]{1,159}\.$(?![\s\S])/.test(value);
+  }
+
+  function hasFields(value, fields, allowExtra) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    return (allowExtra || Object.keys(value).length === fields.length) && fields.every(function (field) {
+      return Object.prototype.hasOwnProperty.call(value, field);
+    });
+  }
+
+  function invalidRules(error) {
+    return { ok: false, rules: [], error: error };
+  }
+
+  function validateRules(value) {
+    if (!Array.isArray(value) || value.length > LIMIT) {
+      return invalidRules("映射需要规则列表，最多保存 30 条。");
+    }
+    var rules = [];
+    var ids = Object.create(null);
+    var sources = Object.create(null);
+    for (var index = 0; index < value.length; index += 1) {
+      var rule = value[index];
+      if (!hasFields(rule, RULE_FIELDS) || typeof rule.id !== "string" ||
+          !/^[a-z][a-z0-9-]{0,39}$(?![\s\S])/.test(rule.id) ||
+          (rule.match !== "exact" && rule.match !== "prefix") ||
+          !(rule.match === "exact" ? validSku(rule.from) : validPrefix(rule.from)) ||
+          !validSku(rule.to) || typeof rule.enabled !== "boolean") {
+        return invalidRules("请填写完整 SKU；前缀需以点结尾，目标需为 g1.、com.google.one. 或 com.google.gemini. 编号。");
+      }
+      if (rule.from === rule.to) return invalidRules("原始 SKU 与目标 SKU 相同，请填写不同的目标。");
+      if (ids[rule.id]) return invalidRules("规则标识重复，请刷新管理页后重试。");
+      var source = rule.match + ":" + rule.from;
+      if (sources[source]) return invalidRules("相同匹配方式的原始 SKU 已存在，请编辑已有规则。");
+      ids[rule.id] = true;
+      sources[source] = true;
+      rules.push({ id: rule.id, match: rule.match, from: rule.from, to: rule.to, enabled: rule.enabled });
+    }
+    return { ok: true, rules: rules, error: "" };
+  }
+
+  function randomHex(length) {
+    var value = "";
+    for (var index = 0; index < length; index += 1) value += Math.floor(Math.random() * 16).toString(16);
+    return value;
+  }
+
+  function newId() {
+    return "rule-" + randomHex(16);
+  }
+
+  function configState(status, revision, updatedAt, customized, rules, error) {
+    var target = "";
+    rules.some(function (rule) {
+      if (rule.enabled && rule.match === "prefix" && rule.from === SOURCE_PREFIX) {
+        target = rule.to;
+        return true;
+      }
+      return false;
+    });
+    return {
+      status: status,
+      revision: revision,
+      updatedAt: updatedAt,
+      mode: status === "default" ? "discount75" : status === "custom" ? "custom" : "",
+      customized: customized,
+      rules: rules,
+      target: target,
+      targetOrigin: target ? customized ? "user-configured" : "user-specified" : "",
+      error: error
+    };
+  }
+
+  function failedState(status) {
+    return configState(status, status, "", false, [], status === "invalid" ? CONFIG_ERROR : READ_ERROR);
+  }
+
+  function validTime(value) {
+    return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$(?![\s\S])/.test(value) &&
+      isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+  }
+
+  function read() {
+    var raw;
+    try {
+      if (!store || typeof store.read !== "function") return failedState("unavailable");
+      raw = store.read(KEY);
+    } catch (error) {
+      return failedState("unavailable");
+    }
+    if (raw === null || typeof raw === "undefined" || raw === "") {
+      return configState("default", DEFAULT_REVISION, "", false, defaults(), "");
+    }
+    try {
+      if (typeof raw !== "string") return failedState("invalid");
+      var saved = JSON.parse(raw);
+      if (!hasFields(saved, RECORD_FIELDS, true) || saved.schemaVersion !== 1 ||
+          typeof saved.revision !== "string" || !/^[a-f0-9]{48}$(?![\s\S])/.test(saved.revision) ||
+          !validTime(saved.updatedAt) || typeof saved.customized !== "boolean") {
+        return failedState("invalid");
+      }
+      var checked = validateRules(saved.rules);
+      if (!checked.ok || (!saved.customized && checked.rules.length !== 0)) return failedState("invalid");
+      return configState(saved.customized ? "custom" : "default", saved.revision, saved.updatedAt,
+        saved.customized, saved.customized ? checked.rules : defaults(), "");
+    } catch (error) {
+      return failedState("invalid");
+    }
+  }
+
+  function saveResult(status, error, config) {
+    return { ok: status === 200, status: status, error: error, config: config };
+  }
+
+  function save(expectedRevision, rules, restore) {
+    var current = read();
+    if (current.status === "unavailable") return saveResult(503, READ_ERROR, current);
+    if (typeof expectedRevision !== "string" || expectedRevision !== current.revision) {
+      return saveResult(409, REVISION_ERROR, current);
+    }
+    if (current.status === "invalid" && restore !== true) return saveResult(400, CONFIG_ERROR, current);
+    var checked = restore === true ? { ok: true, rules: [] } : validateRules(rules);
+    if (!checked.ok) return saveResult(400, checked.error, current);
+    try {
+      if (!store || typeof store.write !== "function") return saveResult(503, WRITE_ERROR, current);
+    } catch (error) {
+      return saveResult(503, WRITE_ERROR, current);
+    }
+
+    var revision = randomHex(48);
+    if (revision === current.revision) {
+      revision = revision.slice(0, 47) + ((parseInt(revision.charAt(47), 16) + 1) % 16).toString(16);
+    }
+    var saved = {
+      schemaVersion: 1,
+      revision: revision,
+      updatedAt: new Date().toISOString(),
+      customized: restore !== true,
+      rules: checked.rules
+    };
+    var written = false;
+    try {
+      written = store.write(JSON.stringify(saved), KEY);
+    } catch (error) {
+      written = false;
+    }
+    var verified = read();
+    var expectedRules = saved.customized ? saved.rules : defaults();
+    if (!written || verified.status !== (saved.customized ? "custom" : "default") ||
+        verified.revision !== saved.revision || verified.updatedAt !== saved.updatedAt ||
+        verified.customized !== saved.customized || JSON.stringify(verified.rules) !== JSON.stringify(expectedRules)) {
+      return saveResult(503, WRITE_ERROR, verified);
+    }
+    return saveResult(200, "", verified);
+  }
+
+  function applyPreset(expectedRevision, presetId) {
+    var current = read();
+    if (current.status === "unavailable") return saveResult(503, READ_ERROR, current);
+    if (typeof expectedRevision !== "string" || expectedRevision !== current.revision) {
+      return saveResult(409, REVISION_ERROR, current);
+    }
+    if (current.status === "invalid") return saveResult(400, CONFIG_ERROR, current);
+
+    var selected = null;
+    presets().some(function (preset) {
+      if (preset.id !== presetId) return false;
+      selected = preset;
+      return true;
+    });
+    if (!selected) return saveResult(400, "映射模板不存在，请刷新管理页后重试。", current);
+
+    var rules = current.rules.slice();
+    var ids = Object.create(null);
+    var positions = Object.create(null);
+    rules.forEach(function (rule, index) {
+      ids[rule.id] = true;
+      positions[rule.match + ":" + rule.from] = index;
+    });
+    selected.rules.forEach(function (rule) {
+      var source = rule.match + ":" + rule.from;
+      var position = positions[source];
+      var id;
+      if (typeof position === "number") {
+        id = rules[position].id;
+      } else {
+        var base = newId();
+        id = base;
+        for (var suffix = 1; suffix <= rules.length && ids[id]; suffix += 1) id = base + "-" + suffix;
+        ids[id] = true;
+        position = rules.length;
+        positions[source] = position;
+      }
+      rules[position] = { id: id, match: rule.match, from: rule.from, to: rule.to, enabled: true };
+    });
+
+    var checked = validateRules(rules);
+    if (!checked.ok) return saveResult(400, checked.error, current);
+    return save(expectedRevision, checked.rules, false);
+  }
+
+  function resolve(id, state) {
+    if (!validSku(id) || !state || (state.status !== "default" && state.status !== "custom") ||
+        !Array.isArray(state.rules)) return null;
+    var selected = null;
+    for (var index = 0; index < state.rules.length; index += 1) {
+      var rule = state.rules[index];
+      if (!rule.enabled) continue;
+      if (rule.match === "exact" && rule.from === id) return rule;
+      if (rule.match === "prefix" && id.length > rule.from.length && id.indexOf(rule.from) === 0 &&
+          (!selected || rule.from.length > selected.from.length)) selected = rule;
+    }
+    return selected;
+  }
+
+  return {
+    key: KEY,
+    limit: LIMIT,
+    defaults: defaults,
+    presets: presets,
+    validSku: validSku,
+    validateRules: validateRules,
+    newId: newId,
+    read: read,
+    save: save,
+    applyPreset: applyPreset,
+    resolve: resolve
   };
-  var FALLBACK = {
-    "g1.20tb.1month_eft.acq": "g1.20tb.3months_ip_90p.acq",
-    "g1.ai.ultra.1month_eft.acq": "g1.ai.ultra.3months_ip_90p.acq"
-  };
+}
 
+(function () {
+  var VERSION = "g1-acq-v9.0-mappings";
+  var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
   var SCAN_LIMIT = 300;
@@ -56,15 +351,12 @@
     return;
   }
 
-  var TARGET = DEFAULT_TARGET;
-  try {
-    if (typeof $persistentStore !== "undefined" && typeof $persistentStore.read === "function") {
-      var customTarget = ($persistentStore.read(TARGET_OVERRIDE_KEY) || "").trim();
-      if (/^g1\.[A-Za-z0-9._-]{2,120}$/.test(customTarget)) {
-        TARGET = customTarget;
-      }
-    }
-  } catch (e) {}
+  var mappingEngine = createG1MappingConfig(typeof $persistentStore === "undefined" ? null : $persistentStore);
+  var mappingConfig = mappingEngine.read();
+  var MODE = mappingConfig.mode;
+  var configError = mappingConfig.status === "invalid" || mappingConfig.status === "unavailable";
+  console.log("[g1-acq] " + VERSION + " mappingStatus=" + mappingConfig.status +
+    " mappingRevision=" + mappingConfig.revision + " mode=" + MODE);
 
   var body = typeof $response === "object" && $response ? $response.body : undefined;
   try {
@@ -73,7 +365,11 @@
     console.log("[g1-acq] SKU collection unavailable");
   }
 
-  if (!/^https:\/\/one\.google\.com\/ai\?/.test(url)) {
+  // Support both Google App (/ai?) and standalone Google One App (batchexecute / plans / subscribe)
+  var isTargetEndpoint = /^https:\/\/one\.google\.com\/(?:u\/\d+\/)?(?:ai|plans|subscribe|upsell|about\/plans)(?:[/?#]|$)/.test(url) ||
+    /^https:\/\/one\.google\.com\/(?:u\/\d+\/)?_\/[^?#]+\/data\/batchexecute(?:\?|$)/.test(url);
+
+  if (!isTargetEndpoint) {
     $done({});
     return;
   }
@@ -83,30 +379,18 @@
   var annualHits = 0;
   var out = body;
 
-  if (typeof body === "string") {
-    var observed = body.match(/g1\.[a-z0-9._]{2,60}(?:acq|eft|90p|95p|subs_variant|student)/g) || [];
+  if (typeof body === "string" && !configError) {
     out = body.replace(
-      /(^|[^A-Za-z0-9._@%-])(g1\.[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g,
+      /(^|[^A-Za-z0-9._@%-])((?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g,
       function (match, before, id) {
+        var rule = mappingEngine.resolve(id, mappingConfig);
+        if (!rule) return match;
         var isAnnual = id.indexOf(SOURCE_PREFIX) === 0 && id.length > SOURCE_PREFIX.length;
-        var to;
-        var fallback = false;
-        if (isAnnual) {
-          to = TARGET;
-        } else if (Object.prototype.hasOwnProperty.call(SKU_MAP, id)) {
-          to = SKU_MAP[id];
-          if (observed.indexOf(to) === -1 && FALLBACK[to] && observed.indexOf(FALLBACK[to]) !== -1) {
-            to = FALLBACK[to];
-            fallback = true;
-          }
-        } else {
-          return match;
-        }
-        if (!mappings[id]) mappings[id] = { id: id, to: to, count: 0, fallback: fallback };
+        if (!mappings[id]) mappings[id] = { id: id, to: rule.to, count: 0, fallback: false };
         mappings[id].count += 1;
         hits += 1;
         if (isAnnual) annualHits += 1;
-        return before + to;
+        return before + rule.to;
       }
     );
   }
@@ -117,14 +401,18 @@
   var record = {
     schemaVersion: 1,
     version: VERSION,
+    mode: MODE,
     updatedAt: new Date().toISOString(),
+    mappingRevision: mappingConfig.revision,
+    mappingUpdatedAt: mappingConfig.updatedAt,
+    mappingStatus: mappingConfig.status,
     sourcePrefix: SOURCE_PREFIX,
-    target: TARGET,
-    targetOrigin: "user-specified",
+    target: mappingConfig.target,
+    targetOrigin: mappingConfig.targetOrigin,
     hitCount: hits,
     annualHitCount: annualHits,
     matchedFrom: sources,
-    status: typeof body !== "string" ? "non-text" : hits ? "rewritten" : "no-match"
+    status: configError ? "config-error" : typeof body !== "string" ? "non-text" : hits ? "rewritten" : "no-match"
   };
 
   try {
@@ -138,10 +426,9 @@
     console.log("[g1-acq] local record unavailable");
   }
 
-  console.log("[g1-acq] " + VERSION + " target=" + TARGET + " hits=" + hits + " annualHits=" + annualHits);
+  console.log("[g1-acq] " + VERSION + " hits=" + hits + " annualHits=" + annualHits + " mode=" + MODE);
   sources.forEach(function (source) {
-    console.log("[g1-acq] " + source.id + " -> " + source.to + " x" + source.count +
-      (source.fallback ? " fallback=" + source.to : ""));
+    console.log("[g1-acq] " + source.id + " -> " + source.to + " x" + source.count);
   });
   $done(hits ? { body: out } : {});
 
@@ -159,7 +446,7 @@
 
     var byId = Object.create(null);
     var ids = [];
-    var validId = /^(?:g1\.|com\.google\.one\.)[A-Za-z0-9._-]{1,160}$/;
+    var validId = /^(?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]{1,160}$/;
     var oldRows = Array.isArray(saved.skus) ? saved.skus : [];
     oldRows.slice(0, SCAN_LIMIT).forEach(function (row) {
       if (!row || typeof row.id !== "string" || !validId.test(row.id) || byId[row.id]) return;
@@ -180,7 +467,7 @@
     var truncated = saved.truncated === true;
     if (isText) {
       var text = originalBody.replace(/\\u002e|\\x2e|&#0*46;|&#x0*2e;|&period;/gi, ".");
-      var token = /(^|[^A-Za-z0-9._@%-])((?:g1\.|com\.google\.one\.)[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g;
+      var token = /(^|[^A-Za-z0-9._@%-])((?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g;
       var match;
       while ((match = token.exec(text)) !== null) {
         var id = match[2];
@@ -228,6 +515,7 @@
     var state = {
       schemaVersion: 1,
       version: VERSION,
+      mode: MODE,
       updatedAt: now,
       scannedResponses: priorCount(saved.scannedResponses) + (isText ? 1 : 0),
       matchedResponses: priorCount(saved.matchedResponses) + (hitCount > 0 ? 1 : 0),
@@ -248,7 +536,7 @@
 
     console.log("[g1-acq] " + VERSION + " status=" + status + " addedCount=" + addedCount +
       " candidates=" + candidateCount + " omittedCount=" + omittedCount +
-      " occurrences=" + hitCount + " saved=" + (stored ? "yes" : "no"));
+      " occurrences=" + hitCount + " saved=" + (stored ? "yes" : "no") + " mode=" + MODE);
   }
 
   function safeRoute(requestUrl) {
