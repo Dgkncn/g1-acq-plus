@@ -1,5 +1,5 @@
-#!name=G1 ACQ Plus v9.1.0 (0.05折/1元 Pro & 土区 Ultra & 实时调试日志)
-#!desc=v9.1.0：内置 iOS 实时抓包与改写调试日志面板 (https://one.google.com/g1-sku-report)；支持「0.05折/1元开 Pro」(com.google.gemini.2tb.ai.m.3month_ip_99p)、土区 Ultra 30TB (₺2949.99) & 20TB (₺1989.99) 老定价档、Ultra 三个月2.5折(75p)及 Pro 18M/12M $0 免费试用。
+#!name=G1 ACQ Plus v9.2.0 (0.05折/1元 Pro & 土区 Ultra & TXT日志导出)
+#!desc=v9.2.0：修复 WIZ_global_data 转义反斜杠吞噬 bug（解决「购买交易未完成」），新增一键导出日志到 TXT 文本及账号地区/币种检测 (https://one.google.com/g1-sku-report)；支持「0.05折/1元开 Pro」、土区 Ultra 老定价档与 Pro 18M/12M 免费试用。
 #!system=ios
 
 [Rule]
