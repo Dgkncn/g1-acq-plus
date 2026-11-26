@@ -104,6 +104,42 @@ function createG1MappingConfig(store) {
         rules: [
           { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_eft", enabled: true }
         ]
+      },
+      {
+        id: "probe-batch-1-gemini",
+        title: "🕵️ 10槽位批量探测包 A（com.google.gemini.* 99p/免费/1折家族）",
+        description: "把页面上的 10 个套餐按钮分别替换成 10 个不同的 com.google.gemini.* 候选隐藏 ID！应用后打开升级页，挨个点击「按月/按年」的 100GB/400GB/2TB/Pro/Ultra 按钮：哪个按钮能弹出 Apple 付款框（不报交易未完成），说明该槽位对应的隐藏 ID 在 iOS 真实可购！",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "com.google.gemini.2tb.ai.m.1month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "com.google.gemini.2tb.ai.m.12month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "com.google.gemini.2tb.ai.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "com.google.gemini.2tb.ai.m.3month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "com.google.gemini.2tb.ai.m.12month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "com.google.gemini.2tb.ai.m.3month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "com.google.gemini.2tb.ai.m.3month_ip_75p", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "com.google.gemini.2tb.ai.m", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "com.google.gemini.2tb.ai.a", enabled: true }
+        ]
+      },
+      {
+        id: "probe-batch-2-g1ios",
+        title: "🕵️ 10槽位批量探测包 B（g1.ios.* & com.google.one.* 隐藏促销家族）",
+        description: "探测 g1.ios.* 与 com.google.one.* 命名空间下的 99p/90p/免费试用与老定价档（含 g1.ios.2tb.y 年付老档、g1.ios.20tb.m、g1.ios.30tb.m 等 10 个 ID）。同样挨个点页面按钮测试哪个能唤起 Apple 弹窗！",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.ios.20tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ios.30tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.ios.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "g1.ios.2tb.ai.m.12month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "com.google.one.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "g1.ios.2tb.y", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "g1.ios.2tb.ai.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "g1.ios.2tb.ai.m.3month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "g1.2tb.ai.3months_ip_90p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "g1.2tb.ai.12months_ip_75p", enabled: true }
+        ]
       }
     ];
   }
@@ -346,7 +382,7 @@ function createG1MappingConfig(store) {
 }
 
 (function () {
-  var VERSION = "g1-acq-v9.3-mappings";
+  var VERSION = "g1-acq-v9.4-mappings";
   var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
