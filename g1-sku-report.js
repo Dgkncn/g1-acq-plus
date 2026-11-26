@@ -3,7 +3,7 @@
 
 (function () {
   var ROOT = "https://one.google.com/g1-sku-report";
-  var VERSION = "v9.0.0";
+  var VERSION = "v9.0.1";
   var COLLECTOR_VERSION = "g1-acq-v9.0-mappings";
   var MODE_NAMES = {
     discount75: "Ultra 三个月 75p（2.5折）",
@@ -355,7 +355,7 @@ function createG1MappingConfig(store) {
     "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action " + ROOT
   };
   var method = typeof $request.method === "undefined" ? "GET" : String($request.method).toUpperCase();
-  if ((method !== "GET" && method !== "POST") || (method === "GET" && query("action") !== null)) {
+  if (method !== "GET" && method !== "POST") {
     headers.Allow = "GET, POST";
     problem(405, "映射修改请使用本页的保存、删除或恢复默认按钮。");
     return;
@@ -371,24 +371,16 @@ function createG1MappingConfig(store) {
   var formDraft = null;
   var clearMessage = "";
 
-  if (method === "POST") {
-    // Only these request metadata fields are read; cookies and authorization are unused.
-    var origin = requestHeader("origin");
-    var fetchSite = requestHeader("sec-fetch-site");
-    if (typeof origin !== "string" || origin.toLowerCase() !== "https://one.google.com" ||
-        (typeof fetchSite !== "undefined" && (typeof fetchSite !== "string" || fetchSite.toLowerCase() !== "same-origin"))) {
-      problem(403, "请从本机 SKU 管理页提交修改，并保持小火箭模块开启。");
-      return;
+  var hasGetAction = method === "GET" && query("action") !== null;
+  if (method === "POST" || hasGetAction) {
+    var body = "";
+    if (method === "POST" && typeof $request.body === "string" && $request.body.length > 0) {
+      body = $request.body;
+    } else if (url.indexOf("?") >= 0) {
+      body = url.slice(url.indexOf("?") + 1).split("#")[0];
     }
-    var contentType = requestHeader("content-type");
-    if (typeof contentType !== "string" ||
-        !/^application\/x-www-form-urlencoded(?:\s*;\s*charset\s*=\s*(?:utf-8|\"utf-8\"))?\s*$/i.test(contentType)) {
-      problem(415, "保存请求需要使用页面内的表单格式。");
-      return;
-    }
-    var body = $request.body;
-    if (typeof body !== "string") {
-      problem(400, "没有收到表单正文；请更新模块并重新打开管理页。");
+    if (typeof body !== "string" || !body) {
+      problem(400, "没有收到表单数据；请在小火箭模块页左滑更新模块并重新打开管理页。");
       return;
     }
     try {
@@ -730,7 +722,7 @@ function createG1MappingConfig(store) {
           return "<div class=preset-pair><span class=note>" + (rule.match === "exact" ? "完整 SKU" : "SKU 前缀") +
             "</span><code>" + escape(rule.from) + "</code><span aria-label=替换为>↓</span><code>" + escape(rule.to) + "</code></div>";
         }).join("");
-        return "<form class=preset method=post action=\"" + ROOT + "\"><fieldset" +
+        return "<form class=preset method=get action=\"" + ROOT + "\"><fieldset" +
           (!writable || !validConfig ? " disabled" : "") + "><legend>" + escape(preset.title) + "</legend>" +
           revisionInput() + "<input type=hidden name=preset value=\"" + escape(preset.id) + "\">" +
           "<p class=note>" + escape(preset.description) + "</p>" + pairs +
@@ -744,7 +736,7 @@ function createG1MappingConfig(store) {
     var select = "<option value=exact" + (draft.match === "exact" ? " selected" : "") + ">完整 SKU</option>" +
       "<option value=prefix" + (draft.match === "prefix" ? " selected" : "") + ">SKU 前缀（以点结尾）</option>";
     if (draft.match !== "exact" && draft.match !== "prefix") select = "<option value=\"\" selected>请选择匹配方式</option>" + select;
-    return "<form class=rule method=post action=\"" + ROOT + "\"" + (isNew ? " id=new-mapping" : "") + ">" +
+    return "<form class=rule method=get action=\"" + ROOT + "\"" + (isNew ? " id=new-mapping" : "") + ">" +
       "<fieldset" + (disabled ? " disabled" : "") + "><legend>" + (isNew ? "新增映射" : "编辑映射") + "</legend>" +
       revisionInput() + "<input type=hidden name=id value=\"" + escape(rule.id) + "\">" +
       "<div class=fields><label>匹配方式<select name=match required>" + select + "</select></label>" +
@@ -774,7 +766,7 @@ function createG1MappingConfig(store) {
     if (orphanDraft) parts.push("<p class=note>上次填写的保存结果尚未确认，内容已保留在新增框中；刷新核对当前规则后再保存。</p>");
     parts.push(ruleForm(newRule, true));
     if (config.rules.length >= engine.limit) parts.push("<p class=note>已达到规则上限，删除一条后即可新增。</p>");
-    parts.push("<form class=reset method=post action=\"" + ROOT + "\">" + revisionInput() +
+    parts.push("<form class=reset method=get action=\"" + ROOT + "\">" + revisionInput() +
       "<button type=submit name=action value=reset" + (!writable ? " disabled" : "") + ">恢复默认映射</button></form>",
       "<p class=note>恢复默认会把当前规则替换为 2TB 12个月90p、20TB / 30TB 三个月75p三条内建规则；采集和执行历史保留。</p></section>");
     return parts.join("");
