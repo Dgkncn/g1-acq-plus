@@ -38,10 +38,10 @@ function createG1MappingConfig(store) {
       {
         id: "pro-1yuan",
         title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月）",
-        description: "实测神级路径：把 Ultra 5x (20TB) 改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro 2TB/5TB。",
+        description: "实测神级路径：仅把 Ultra 5x (20TB) 精确改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%），保持 2TB 为 12个月90p 避免多个套餐共用同一 SKU 报错。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro。",
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
-          { match: "prefix", from: SOURCE_PREFIX, to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
+          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true }
         ]
       },
       {
@@ -336,7 +336,7 @@ function createG1MappingConfig(store) {
 }
 
 (function () {
-  var VERSION = "g1-acq-v9.1-mappings";
+  var VERSION = "g1-acq-v9.2-mappings";
   var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
@@ -378,11 +378,10 @@ function createG1MappingConfig(store) {
   var out = body;
 
   if (isTargetEndpoint && typeof body === "string" && !configError) {
-    // Also support escaped dots (\u002e / \x2e) inside batchexecute JSON strings!
+    // Use strict token boundary (excluding backslash!) so trailing \" in WIZ_global_data JSON is NEVER swallowed!
     out = body.replace(
-      /(^|[^A-Za-z0-9._@%-])((?:g1(?:\.|\\u002e|\\x2e)|com(?:\.|\\u002e|\\x2e)google(?:\.|\\u002e|\\x2e)(?:one|gemini)(?:\.|\\u002e|\\x2e))[A-Za-z0-9._\\-]+)(?=$|[^A-Za-z0-9._-])/g,
-      function (match, before, rawId) {
-        var id = rawId.replace(/\\u002e|\\x2e/gi, ".");
+      /(^|[^A-Za-z0-9._@%-])((?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g,
+      function (match, before, id) {
         var rule = mappingEngine.resolve(id, mappingConfig);
         if (!rule) return match;
         var isAnnual = id.indexOf(SOURCE_PREFIX) === 0 && id.length > SOURCE_PREFIX.length;
@@ -571,7 +570,13 @@ function createG1MappingConfig(store) {
     var shortUrl = reqUrl.replace(/^https:\/\/one\.google\.com/, "");
     if (shortUrl.length > 180) shortUrl = shortUrl.slice(0, 180) + "...";
     var snippet = "";
+    var country = "";
+    var currency = "";
     if (typeof respBody === "string") {
+      var cMatch = /\\?"([A-Z]{2,3})\\?",\[\[\\?"g1\.ios\./.exec(respBody) || /\[\[null,null,\\?"([A-Z]{2,3})\\?"/.exec(respBody);
+      if (cMatch) country = cMatch[1];
+      var curMatch = /\[\[\\?"g1\.ios\.[^"]+\\?"[^\]]*\],\[\\?"([A-Z]{3})\\?"/.exec(respBody);
+      if (curMatch) currency = curMatch[1];
       var skuIdx = respBody.search(/g1\.|com\.google\.(?:one|gemini)\./);
       if (skuIdx >= 0) {
         snippet = respBody.slice(Math.max(0, skuIdx - 40), Math.min(respBody.length, skuIdx + 200));
@@ -586,6 +591,8 @@ function createG1MappingConfig(store) {
       status: statusCode,
       url: shortUrl,
       rpcids: rpcMatch ? decodeURIComponent(rpcMatch[1]) : "",
+      country: country,
+      currency: currency,
       contentType: ctype.slice(0, 60),
       bodyLen: typeof respBody === "string" ? respBody.length : -1,
       isTargetEndpoint: !!isTarget,
