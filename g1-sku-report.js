@@ -829,7 +829,8 @@ function createG1MappingConfig(store) {
     table(report.scan.skus, true),
     "<p>更新时间（UTC）：" + escape(report.scan.updatedAt || "暂无") + "</p></section>",
     "<form method=get action=\"" + ROOT + "\"><button name=clear value=1>清空本工具的采集与测试记录</button></form>",
-    "<p class=note>清空记录保留映射配置；浏览方案后刷新本页查看记录，独立采集器和历史改写副本保持停用。</p></html>"
+    "<p class=note>清空记录保留映射配置；浏览方案后刷新本页查看记录，独立采集器和历史改写副本保持停用。</p>",
+    "<section style=\"text-align:center;border:2px solid #1259be;background:#f0f6ff\"><h2 style=\"font-size:22px;margin:6px 0\">📢 有问题联系推特：<a href=\"https://x.com/zixunclub\" target=\"_blank\" rel=\"noopener\">https://x.com/zixunclub</a></h2></section></html>"
   ].join("");
   $done({ response: { status: responseStatus, headers: headers, body: html } });
 })();
