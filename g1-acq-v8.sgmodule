@@ -1,14 +1,10 @@
-#!name=G1 ACQ Plus v9.0.1 (0.05折/1元 Pro & 土区 Ultra & 18M/12M Free)
-#!desc=v9.0.1：同步 v7.11 最新「0.05折/1元开 Pro」神级 SKU (com.google.gemini.2tb.ai.m.3month_ip_99p，印区$0.11/印尼0.1折/新加坡0.17折)、土区 Ultra 30TB (₺2949.99) & 20TB (₺1989.99) 老定价档、Ultra 三个月2.5折(75p)及 Pro 18M/12M $0 免费试用，同时支持 Google One App 与 Google App。本地管理面板：https://one.google.com/g1-sku-report
+#!name=G1 ACQ Plus v9.1.0 (0.05折/1元 Pro & 土区 Ultra & 实时调试日志)
+#!desc=v9.1.0：内置 iOS 实时抓包与改写调试日志面板 (https://one.google.com/g1-sku-report)；支持「0.05折/1元开 Pro」(com.google.gemini.2tb.ai.m.3month_ip_99p)、土区 Ultra 30TB (₺2949.99) & 20TB (₺1989.99) 老定价档、Ultra 三个月2.5折(75p)及 Pro 18M/12M $0 免费试用。
 #!system=ios
 
 [Rule]
 # 拦截 UDP 443，促使支持回退的 HTTP/3 请求改走 TCP。
 AND,((PROTOCOL,UDP),(DEST-PORT,443)),REJECT-NO-DROP
-
-[URL Rewrite]
-# 拦截 Google One App 地区/风控预检 RPC A6N72c，保障土区/跨区顺利唤起 Apple 订阅弹窗
-^https:\/\/one\.google\.com\/_\/SubscriptionsManagementUi\/data\/batchexecute\?rpcids=A6N72c.* https://one.google.com/ header
 
 [Script]
 g1-acq = type=http-response,pattern=^https:\/\/one\.google\.com\/,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/Dgkncn/g1-acq-plus/main/g1-acq.js
