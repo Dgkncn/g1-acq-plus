@@ -1,0 +1,260 @@
+Google One 一键下单工具（Pro 免费 / Ultra 促销）
+================================================
+
+【第一步：装环境（只需一次）】
+  双击  一键安装环境.bat
+    自动完成：
+      1. 检查 Python（需 3.10+）
+      2. 安装 frida 16.5.9（17.x 不能用，会自动降级）
+      3. 找 adb（环境变量 → PATH → MuMu 自带 → 都没有就自动下载 platform-tools）
+      4. 连接模拟器 + 跑自检
+    看到「环境自检通过」就可以往下走。
+
+
+【前提（缺一不可）】
+  1. MuMu 模拟器已启动，已登录目标 Google 账号
+  2. 该账号已绑定付款方式（卡）
+  3. 该账号没有任何现存 Google One 订阅（Ultra 促销必需）
+  4. Play 商店能正常打开（打不开就先重启模拟器）
+
+
+【双击顺序 · Pro（完全免费）】
+  0_环境自检.bat                  先跑，全绿再继续
+  1_查看offer列表.bat             查当前账号所有免费档（不下单，零风险）
+
+  2_Pro_免费12个月_第1步.bat       第 1 次：12 个月免费
+  3_Pro_免费叠加6个月_第2步.bat    第 2 次：+6 个月（累计 18）
+  4_Pro_免费叠加6个月_第3步.bat    第 3 次：+6 个月（累计 24）
+  5_Pro_免费备用6个月.bat          备用包（前三步成功后再用）
+
+  6_Pro_免费3个月_单开.bat         单独开 3 个月免费（不叠加，适合只想试用的号）
+
+  Pro 的免费档 SKU：
+    g1.2tb.ai.subs_variant   12months-eft / 6months-eft / 6months-eft-2 / ss-2026
+    g1.play.2tb.ai           eft-3mo
+
+  叠加原理（第 2/3/4 步自动执行）：
+    1. 从 Play 的 library.db 读出当前订阅的 purchaseToken
+    2. BillingFlowParams.SubscriptionUpdateParams
+         .setOldPurchaseToken(旧 token)
+         .setReplaceProrationMode(5)      // CHARGE_FULL_PRICE
+    3. 拉起收银台
+
+  叠加成功的收银台长这样：
+    即将扣款  今天 ¥0
+    546 天（包含根据您的当前方案所剩时间折算出的 364 天）
+    开始日期：2028年5月18日
+
+  如果显示「开始日期 = 当前到期日、当天就扣费」= 没走升级模式：
+    · 检查订阅是否「活跃」（已取消的订阅不给叠加）
+    · 检查是否漏了 --stack
+
+
+【双击顺序 · Ultra（付费促销，前 3 个月特价）】
+  10_查Ultra促销档.bat             一次查四个档（只查，不下单）
+
+  11_Ultra30TB_3个月1折_19.99.bat   ★最优：Ultra 30TB · 前 3 个月 $19.99
+  7_Ultra20TB_3个月1折_9.99.bat     Ultra 20TB · 前 3 个月 $9.99
+  8_Ultra20TB_3个月2折_19.99.bat    Ultra 20TB · 前 3 个月 $19.99
+  9_Ultra30TB_3个月2.5折_49.99.bat  Ultra 30TB · 前 3 个月 $49.99
+
+  | 档位          | SKU                                | 前3个月      | 第4个月起  | 3个月合计 |
+  |---------------|------------------------------------|--------------|-----------|-----------|
+  | Ultra 30TB 20x| g1.ai.ultra.3months_ip_90p.acq     | $19.99(1折)  | $199.99   | $59.97    |
+  | Ultra 20TB 5x | g1.20tb.3months_ip_90p             | $9.99(1折)   | $99.99    | $29.97    |
+  | Ultra 20TB 5x | g1.20tb.3months_ip_80p             | $19.99(2折)  | $99.99    | $59.97    |
+  | Ultra 30TB 20x| g1.ai.ultra.3months_ip_75p.acq     | $49.99(2.5折)| $199.99   | $149.97   |
+
+  弹窗正确长相（以 30TB 1折为例）：
+    Google AI Ultra (30 TB)
+      开始日期：今天          US$19.99/month
+      开始日期：2027年2月21日  US$199.99/month
+      [订阅]
+
+  硬条件：
+    * 账号必须没有任何 Google One 订阅
+      （有订阅的号查这些 SKU 会返回 code 6，不可用）
+    * 30TB 的 1 折档必须带 .acq 后缀（不带查不到）
+    * 每个账号每个档只能用一次
+    * 第 90 天前务必取消，否则按原价续费
+
+
+【参数说明】
+  --plan pro12 / pro6 / pro6b / pro6c / pro3
+      选择 Pro 的免费档（12 个月 / 6 个月 ×3 / 3 个月）
+  --stack
+      订阅升级叠加模式（第 2/3/4 步用），自动读旧 purchaseToken
+  --allow-paid
+      允许拉起付费促销 offer，并自动选「首期价最低」的那个
+  --sku <商品ID>
+      只查/只拉这一个 SKU
+  --mode <1-5>
+      替换模式：1=TIME_PRORATION 2=CHARGE_PRORATED_PRICE
+                3=WITHOUT_PRORATION 4=DEFERRED 5=CHARGE_FULL_PRICE
+
+
+【每一步之后要核对】
+  打开 play.google.com/store/account/subscriptions 看「下次付款日期」：
+    Pro 第 1 步后 → 12 个月后
+    Pro 第 2 步后 → 18 个月后
+    Pro 第 3 步后 → 24 个月后
+    Ultra 促销后  → 3 个月后（按原价）
+  日期往后推 = 成功，可以继续；没变 = 停手。
+
+
+【排错】
+  卡在 connecting
+      Play 商店没起来。脚本会自动拉起；仍失败就手动打开 Play 商店或重启模拟器。
+  弹窗显示「无法加载 / 重试」
+      Play 商店进程挂了（vending 为空）。从 MuMu 界面彻底关闭模拟器再启动。
+  查不到 offer（code 6）
+      这个号没有该档资格：多半是已有订阅，或地区不匹配。
+  您已订阅
+      该账号已有该档订阅，不能重复购买。
+  未连接到互联网
+      模拟器网络瞬断。等几秒重试；频繁出现就重启模拟器。
+  app_not_started
+      Google One 启动太慢。脚本会等最多 35 秒，仍失败就手动打开 App 再跑。
+  Invalid signature
+      网页端问题（网页结账不认 Android 的 token）。下单只能走本脚本。
+
+
+【注意】
+  · 脚本只弹收银台，不会替你点「订阅」
+  · Pro 的免费档到期前取消，否则按原价扣费
+  · Ultra 促销是付费的，第 90 天前取消
+  · 连续失败多次会触发风控，隔 24 小时再试
+  · 建议用额度较低的卡，万一忘记取消也扣不动
+
+【全量扫描挖到的隐藏档（2026-11-21 实测）】
+  用 70 个候选 SKU 扫了一遍账号，除了 Pro/Ultra 主档，还挖到这些：
+
+  | SKU                                    | offer        | 内容                          |
+  |----------------------------------------|--------------|-------------------------------|
+  | g1.2tb.3months_ip_85p.acq              | introprice   | AI Plus 2TB 前3个月 $1.49/月  |
+  | g1.100gb.1month_eft                    | freetrial    | 100GB 免费 1 个月             |
+  | g1.200gb.1month_eft                    | freetrial    | 200GB 免费 1 个月             |
+  | g1.2tb.1month_eft                      | freetrial    | 2TB 免费 1 个月               |
+  | g1.30gb.1month_eft                     | eft-1month   | 30GB 免费 1 个月              |
+  | g1.youtube_premium_individual_add_on   | eft-1mo      | YouTube Premium 免费 1 个月   |
+
+  对应 bat：
+    12_AI_Plus2TB_3个月85折_1.49.bat   AI Plus 2TB 三个月共 $4.47（最便宜的 AI 档）
+    13_存储免费1个月_100GB.bat         100GB 免费一个月
+    14_存储免费1个月_2TB.bat           2TB 免费一个月
+    15_YouTube免费1个月_需已有订阅.bat  YouTube Premium 附加项（需已有 Google One 订阅）
+
+  说明：
+    * AI Plus 2TB 的 $1.49 是 BillingClient 直接返回的 introprice，可信
+    * YouTube 那个是「附加项」，没有基础订阅时收银台会自己关掉
+    * 存储类 1 个月免费档适合给不需要 AI 权益的号用
+
+  想自己再扫一遍（看别的账号还有什么）：
+    把 g1tools/google-one-tools-main 里的 scan_all.py 拷过来，
+    或直接用：
+      python ultra0.py --account "current@device" --no-add --force --list --allow-paid --sku <商品ID>
+
+【SKU 爆破挖到的全部折扣档（2026-11-22 实测，1520 个候选）】
+  SKU 命名规律：g1.<档位>.<周期>_ip_<折扣>p[.acq]
+  按这个规律爆破，挖到以下档（价格均为首期，US$）：
+
+  ■ Pro 5TB（g1.2tb.ai）
+    g1.2tb.ai.12months_ip_90p     $1.99/月 x 12 个月 = $23.88/年   ★年付最优
+    g1.2tb.ai.12months_ip_75p     $4.99/月 x 12 个月
+    g1.2tb.ai.12months_ip_50p     $9.99/月 x 12 个月
+    g1.2tb.ai.3months_ip_90p.acq  $1.99/月 x 3 个月 = $5.97
+    g1.2tb.ai.3months_ip_85p.acq  $2.99/月 x 3
+    g1.2tb.ai.3months_ip_75p.acq  $4.99/月 x 3
+    g1.2tb.ai.3months_ip_50p       $9.99/月 x 3
+    g1.2tb.ai.1month_ip_95p.acq   $0.99/月（首月）
+
+  ■ AI Plus 400GB（g1.helium）
+    g1.helium.12months_ip_90p     $0.49/月 x 12 = $5.88/年        ★最便宜年付
+    g1.helium.12months_ip_75p     $1.29/月 x 12
+    g1.helium.12months_ip_50p     $2.49/月 x 12
+    g1.helium.3months_ip_90p.acq  $0.49/月 x 3
+
+  ■ AI Plus 2TB（g1.2tb）
+    g1.2tb.3months_ip_90p.acq     $0.99/月 x 3 = $2.97
+    g1.2tb.3months_ip_85p.acq     $1.49/月 x 3
+    g1.2tb.3months_ip_75p         $2.49/月 x 3
+    g1.2tb.1month_ip_95p.acq      $0.49（首月）
+
+  ■ 存储小档
+    g1.100gb.1month_ip_95p.acq    $0.10（首月 100GB）
+    g1.30gb.1month_ip_95p.acq     $0.05（首月 30GB）
+    g1.200gb.1month_ip_95p.acq    $0.15（首月 200GB）
+
+  对应 bat：
+    16_Pro5TB_年付1.99_12个月.bat       Pro 5TB 一年 $23.88（已实测：12 个月）
+    17_AI_Plus400GB_年付0.49_12个月.bat AI Plus 400GB 一年 $5.88
+    18_Pro5TB_3个月1.99.bat             Pro 5TB 三个月 $5.97
+    19_AI_Plus2TB_3个月0.99.bat         AI Plus 2TB 三个月 $2.97
+
+  说明：
+    * 年付档实测收银台显示「今天 $1.99/月 → 2027年11月22日 $19.99/月」，即整 12 个月
+    * 这些是「introprice 首期优惠」，每个账号每档一次
+    * 与免费试用档互斥：有免费试用资格的号优先用免费档
+    * Ultra 的 1 折档（g1.ai.ultra.3months_ip_90p.acq）在购买后会从账号消失
+
+  自己再扫（换账号或想找更多）：
+    python scan_hidden.py --quick     # 140 个候选，约 3 分钟
+    python scan_hidden.py             # 1520 个候选，约 20 分钟
+
+【扩大爆破结果（2026-11-22，scan_wide.py）】
+  维度扩展后重扫：
+    tier   : Pro 5 个 + Ultra 10 个（含 v2/v3/play.*/ai.ultra/ultra 等别名）
+    period : 1month 2months 3months 6months 9months 12months 18months 24months
+    ip     : 40 50 60 70 75 80 85 90 95 98 99
+    suffix : "" / .acq / .sep
+
+  ■ Pro 5TB：17 个促销档（新发现 2months 周期）
+    g1.2tb.ai.12months_ip_90p      $1.99  x 12 个月 = $23.88/年   ★最优
+    g1.2tb.ai.12months_ip_75p      $4.99  x 12 个月
+    g1.2tb.ai.12months_ip_50p      $9.99  x 12 个月
+    g1.2tb.ai.6months_ip_50p       $9.99  x 6 个月
+    g1.2tb.ai.3months_ip_90p.acq   $1.99  x 3 个月
+    g1.2tb.ai.3months_ip_85p.acq   $2.99  x 3 个月
+    g1.2tb.ai.3months_ip_75p.acq   $4.99  x 3 个月
+    g1.2tb.ai.3months_ip_50p       $9.99  x 3 个月
+    g1.2tb.ai.2months_ip_90p.acq   $1.99  x 2 个月     ← 新周期
+    g1.2tb.ai.2months_ip_75p.acq   $4.99  x 2 个月
+    g1.2tb.ai.2months_ip_50p.acq   $9.99  x 2 个月
+    g1.2tb.ai.2months_ip_50p       $9.99  x 2 个月
+    g1.2tb.ai.1month_ip_95p.acq    $0.99  x 1 个月     ← 最便宜单月
+    g1.2tb.ai.1month_ip_90p.acq    $1.99
+    g1.2tb.ai.1month_ip_85p.acq    $2.99
+    g1.2tb.ai.1month_ip_75p.acq    $4.99
+    g1.2tb.ai.1month_ip_50p        $9.99
+
+  ■ Ultra 5x / 20x：3340 个变体，0 命中
+    覆盖档位：20tb 20tb.v2 20tb.v3 20tb.ai 20tb.ai.subs_variant
+              30tb 30tb.v2 30tb.v3 30tb.ai 30tb.ai.subs_variant
+              ai.ultra ai.ultra.subs_variant ultra ultra.20tb ultra.30tb
+              play.20tb play.30tb play.ultra play.ai.ultra play.ai.pro
+    周期：1/2/3/6/9/12/18/24 个月
+    折扣：40%~99%
+    后缀：空 / .acq / .sep
+
+    结论：Ultra 的 introprice offer 已全部下架（2026-11-22 之后）。
+    对照测试：同样的扫描器在 Pro 上命中 34 条，证明扫描有效。
+
+  自扫命令：
+    python scan_wide.py --pro-only      # Pro 专项，约 1320 个，2 分钟
+    python scan_wide.py --ultra-only    # Ultra 专项，约 2640 个，4 分钟
+    python scan_wide.py                 # 全量
+
+【Pro 付费档（菜单版，双击一个 bat 选数字）】
+  99_Pro付费档_菜单.bat
+    [1] 1 个月   US$0.99          共 $0.99
+    [2] 12 个月  US$1.99/月       共 $23.88   ★年付最优
+    [3] 3 个月   US$1.99/月       共 $5.97
+    [4] 2 个月   US$1.99/月       共 $3.98
+
+  单独的双击版：
+    20_Pro5TB_1个月0.99.bat          g1.2tb.ai.1month_ip_95p.acq
+    16_Pro5TB_年付1.99_12个月.bat    g1.2tb.ai.12months_ip_90p
+    18_Pro5TB_3个月1.99.bat          g1.2tb.ai.3months_ip_90p.acq
+
+  注意：这些都是付费档，卡必须有效。
+        免费档（12+6+6）优先用，免费比付费划算。
