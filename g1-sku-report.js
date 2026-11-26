@@ -3,8 +3,8 @@
 
 (function () {
   var ROOT = "https://one.google.com/g1-sku-report";
-  var VERSION = "v9.2.0";
-  var COLLECTOR_VERSION = "g1-acq-v9.2-mappings";
+  var VERSION = "v9.3.0";
+  var COLLECTOR_VERSION = "g1-acq-v9.3-mappings";
   var DEBUG_KEY = "g1.debug.logs.v1";
   var MODE_NAMES = {
     discount75: "Ultra 三个月 75p（2.5折）",
@@ -43,17 +43,27 @@ function createG1MappingConfig(store) {
     return [
       {
         id: "pro-1yuan",
-        title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月）",
-        description: "实测神级路径：仅把 Ultra 5x (20TB) 精确改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%），保持 2TB 为 12个月90p 避免多个套餐共用同一 SKU 报错。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro。",
+        title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月 · 仅改20TB）",
+        description: "实测神级路径：清空其它干扰规则，仅把 Ultra 5x (20TB) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：点此应用后，进升级页点 Ultra 5x (20TB)。",
+        replaceAll: true,
         rules: [
-          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
-          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true }
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
+        ]
+      },
+      {
+        id: "pro-1yuan-from-2tb",
+        title: "🔥 0.05折 / 1元开 Pro（99% OFF · 改2TB AI月付）",
+        description: "备选路径（当点 Ultra 5x 提示交易未完成时用这个）：仅把 Pro 月付 (g1.ios.2tb.ai.m) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p，不改年付避免冲突。操作：点此应用后，进升级页选「按月」点 Pro 5TB。",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
         ]
       },
       {
         id: "tr-ultra-legacy",
         title: "🇹🇷 土区 Ultra 20x / 30TB & 20TB 老定价直购",
-        description: "剥离 .v2 与 .ai.pro 后缀，调用土区 Apple Store 未涨价老 SKU：30TB 仅 ₺2,949.99/月（约3折），20TB 仅 ₺1,989.99/月（约4.1折），2TB 仅 ₺359.99/月。",
+        description: "剥离 .v2 与 .ai.pro 后缀，调用土区 Apple Store 未涨价老 SKU：30TB 仅 ₺2,949.99/月（约3折），20TB 仅 ₺1,989.99/月（约4.1折）。（需土区 Apple ID + Google One 独立 App）",
+        replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ios.30tb.m", enabled: true },
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.ios.20tb.m", enabled: true }
@@ -283,7 +293,7 @@ function createG1MappingConfig(store) {
     });
     if (!selected) return saveResult(400, "映射模板不存在，请刷新管理页后重试。", current);
 
-    var rules = current.rules.slice();
+    var rules = selected.replaceAll ? [] : current.rules.slice();
     var ids = Object.create(null);
     var positions = Object.create(null);
     rules.forEach(function (rule, index) {
@@ -912,4 +922,5 @@ function createG1MappingConfig(store) {
   ].join("");
   $done({ response: { status: responseStatus, headers: headers, body: html } });
 })();
+
 
