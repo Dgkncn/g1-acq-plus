@@ -3,8 +3,9 @@
 
 (function () {
   var ROOT = "https://one.google.com/g1-sku-report";
-  var VERSION = "v9.0.1";
-  var COLLECTOR_VERSION = "g1-acq-v9.0-mappings";
+  var VERSION = "v9.1.0";
+  var COLLECTOR_VERSION = "g1-acq-v9.1-mappings";
+  var DEBUG_KEY = "g1.debug.logs.v1";
   var MODE_NAMES = {
     discount75: "Ultra 三个月 75p（2.5折）",
     custom: "手动映射",
@@ -424,7 +425,8 @@ function createG1MappingConfig(store) {
     try {
       var scanCleared = storage.write("{}", SCAN_KEY);
       var testCleared = storage.write("{}", TEST_KEY);
-      clearMessage = scanCleared && testCleared ? "本工具的两份本地记录已清空，映射配置保持原样。" : "本地记录清空未完成。";
+      var debugCleared = storage.write("[]", DEBUG_KEY);
+      clearMessage = scanCleared && testCleared && debugCleared ? "本工具的采集、测试与调试日志记录已清空，映射配置保持原样。" : "本地记录清空未完成。";
     } catch (error) {
       clearMessage = "本地存储接口暂未就绪。";
     }
@@ -599,12 +601,20 @@ function createG1MappingConfig(store) {
   var targetOrigin = recordedTarget && /^(?:user-specified|user-configured|pattern-derived|legacy)$/.test(storedOrigin) ?
     storedOrigin : recordedTarget === DEFAULT_TARGET ? "user-specified" :
       recordedTarget === LEGACY_TARGET ? "legacy" : "";
+  var debugLogs = [];
+  if (storageAvailable) {
+    try {
+      var rawDebug = JSON.parse($persistentStore.read(DEBUG_KEY) || "[]");
+      if (Array.isArray(rawDebug)) debugLogs = rawDebug.slice(-25);
+    } catch (e) { debugLogs = []; }
+  }
   var report = {
     schemaVersion: 1,
     reportVersion: VERSION,
     configuredMode: config.mode,
     configuredTarget: config.target,
     storageAvailable: storageAvailable,
+    debugLogs: debugLogs,
     mappingConfig: {
       status: config.status, revision: config.revision, updatedAt: config.updatedAt,
       mode: config.mode, customized: config.customized, rules: config.rules,
@@ -676,6 +686,28 @@ function createG1MappingConfig(store) {
           "</td><td>" + scanStatuses[event.status] + "</td><td>" + event.candidateCount +
           "</td><td>" + event.addedCount + "</td><td>" + event.omittedCount + "</td></tr>";
       }).join("") + "</tbody></table></div>";
+  }
+  function debugLogSection(logs) {
+    if (!logs || !logs.length) {
+      return "<section id=debug-logs><h2>🛠️ iOS 实时抓包与改写调试日志（最近 25 条）</h2>" +
+        "<p class=error>⚠️ 当前尚未捕获到任何 <code>one.google.com</code> 的响应！</p>" +
+        "<p class=note><strong>排查清单：</strong><br>1. 请确认小火箭顶部的 VPN 总开关已开启；<br>2. 请确认「配置 → (i) → HTTPS 解密」已开启，且证书已在「系统设置 → 通用 → 关于本机 → 证书信任设置」中勾选完全信任；<br>3. 请从手机后台<strong>彻底划掉 Google App / Google One App</strong>（清除页面缓存），然后重新打开进入升级方案页，再回来刷新本页查看调试日志。</p></section>";
+    }
+    return "<section id=debug-logs><h2>🛠️ iOS 实时抓包与改写调试日志（最近 " + logs.length + " 条）</h2>" +
+      "<p class=note>实时记录每一条经过 <code>one.google.com</code> 的 HTTP 请求、RPC ID、正文长度、提取到的原始 SKU、实际改写结果及响应正文切片（点击导出 JSON 可一键发给开发者排查）。</p>" +
+      "<div class=scroll><table><thead><tr><th>时间 / 状态</th><th>请求路径 &amp; RPC</th><th>发现的原始 SKU</th><th>实际改写结果</th><th>正文切片 / 长度</th></tr></thead><tbody>" +
+      logs.slice().reverse().map(function (item) {
+        var foundHtml = (Array.isArray(item.foundSkus) && item.foundSkus.length) ?
+          item.foundSkus.map(function (s) { return "<code>" + escape(s) + "</code>"; }).join("<br>") : "<span class=note>无 SKU</span>";
+        var rewHtml = (Array.isArray(item.rewritten) && item.rewritten.length) ?
+          "<strong style=\"color:#176238\">" + item.rewritten.map(function (s) { return "<code>" + escape(s) + "</code>"; }).join("<br>") + "</strong>" :
+          (item.isTargetEndpoint ? "<span style=\"color:#9b2420\">0 命中 (规则数:" + (item.activeRulesCount || 0) + ")</span>" : "<span class=note>非改写路径</span>");
+        return "<tr><td>" + escape((item.at || "").replace("T", " ").slice(0, 19)) + "<br><span class=badge>HTTP " + escape(item.status || 200) + "</span></td>" +
+          "<td><strong>" + escape(item.method || "GET") + "</strong> <code>" + escape(item.url || "") + "</code>" +
+          (item.rpcids ? "<br><span class=badge style=\"background:#eef3ff;color:#1259be\">rpcids=" + escape(item.rpcids) + "</span>" : "") + "</td>" +
+          "<td>" + foundHtml + "</td><td>" + rewHtml + "</td>" +
+          "<td><span class=note>长度: " + escape(item.bodyLen) + " B (" + escape(item.contentType || "") + ")</span><br><code style=\"font-size:12px;color:#46556b\">" + escape(item.snippet || "") + "</code></td></tr>";
+      }).join("") + "</tbody></table></div></section>";
   }
   var validConfig = config.status === "default" || config.status === "custom";
   var writable = !!(storageAvailable && typeof storage.write === "function" && config.status !== "unavailable");
@@ -804,7 +836,7 @@ function createG1MappingConfig(store) {
     noticeText ? "<p class=success role=status>" + escape(noticeText) + "</p>" : "",
     clearMessage ? "<p>" + escape(clearMessage) + "</p>" : "",
     storageAvailable ? "" : "<p>本地存储接口暂未就绪；此页尚未读取到采集记录。</p>",
-    presetTemplates(), mappingEditor(),
+    presetTemplates(), debugLogSection(debugLogs), mappingEditor(),
     "<section><h2>采集运行记录</h2>",
     "<p>实际采集脚本：<code>" + escape(report.scan.version || "暂无记录") + "</code><br>实际采集模式：" + modeName(report.scan.mode) + "<br>" + scanVersionStatus + "</p>",
     "<p>已扫描文本响应：" + report.scan.scannedResponses + "；已记录非文本响应：" + report.scan.nonTextResponses +
