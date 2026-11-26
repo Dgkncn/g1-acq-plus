@@ -94,3 +94,5 @@ https://raw.githubusercontent.com/Dgkncn/g1-acq-plus/main/g1-acq-v8.sgmodule
 
 - 响应中替换商品 ID 仅代表客户端向 App Store / Google Play 发起指定 SKU 的收银台请求，最终是否展示试用、订阅周期与扣款金额**一律以 App Store / Google Play 原生收银台弹窗显示为准**。
 - **上游项目致谢**：[https://github.com/crhywun/g1-acq](https://github.com/crhywun/g1-acq)（[@crhywun](https://github.com/crhywun)、[@duwqijlk](https://github.com/duwqijlk)、[@cehomecambodia-lang](https://github.com/cehomecambodia-lang)）。
+
+- - **有问题联系推特**：https://x.com/zixunclub
