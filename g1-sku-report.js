@@ -3,8 +3,8 @@
 
 (function () {
   var ROOT = "https://one.google.com/g1-sku-report";
-  var VERSION = "v9.3.0";
-  var COLLECTOR_VERSION = "g1-acq-v9.3-mappings";
+  var VERSION = "v9.4.0";
+  var COLLECTOR_VERSION = "g1-acq-v9.4-mappings";
   var DEBUG_KEY = "g1.debug.logs.v1";
   var MODE_NAMES = {
     discount75: "Ultra 三个月 75p（2.5折）",
@@ -109,6 +109,42 @@ function createG1MappingConfig(store) {
         description: "将 g1.ios.2tb.* 改写为 12个月免费试用档 g1.2tb.ai.12months_eft（或手动换为 g1.2tb.ai.subs_variant）。",
         rules: [
           { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_eft", enabled: true }
+        ]
+      },
+      {
+        id: "probe-batch-1-gemini",
+        title: "🕵️ 10槽位批量探测包 A（com.google.gemini.* 99p/免费/1折家族）",
+        description: "把页面上的 10 个套餐按钮分别替换成 10 个不同的 com.google.gemini.* 候选隐藏 ID！应用后打开升级页，挨个点击「按月/按年」的 100GB/400GB/2TB/Pro/Ultra 按钮：哪个按钮能弹出 Apple 付款框（不报交易未完成），说明该槽位对应的隐藏 ID 在 iOS 真实可购！",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "com.google.gemini.2tb.ai.m.1month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "com.google.gemini.2tb.ai.m.12month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "com.google.gemini.2tb.ai.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "com.google.gemini.2tb.ai.m.3month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "com.google.gemini.2tb.ai.m.12month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "com.google.gemini.2tb.ai.m.3month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "com.google.gemini.2tb.ai.m.3month_ip_75p", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "com.google.gemini.2tb.ai.m", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "com.google.gemini.2tb.ai.a", enabled: true }
+        ]
+      },
+      {
+        id: "probe-batch-2-g1ios",
+        title: "🕵️ 10槽位批量探测包 B（g1.ios.* & com.google.one.* 隐藏促销家族）",
+        description: "探测 g1.ios.* 与 com.google.one.* 命名空间下的 99p/90p/免费试用与老定价档（含 g1.ios.2tb.y 年付老档、g1.ios.20tb.m、g1.ios.30tb.m 等 10 个 ID）。同样挨个点页面按钮测试哪个能唤起 Apple 弹窗！",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.ios.20tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ios.30tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.ios.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "g1.ios.2tb.ai.m.12month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "com.google.one.2tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "g1.ios.2tb.y", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "g1.ios.2tb.ai.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "g1.ios.2tb.ai.m.3month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "g1.2tb.ai.3months_ip_90p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "g1.2tb.ai.12months_ip_75p", enabled: true }
         ]
       }
     ];
@@ -749,7 +785,7 @@ function createG1MappingConfig(store) {
         "<p class=note><strong>排查清单：</strong><br>1. 请确认小火箭顶部的 VPN 总开关已开启；<br>2. 请确认「配置 → (i) → HTTPS 解密」已开启，且证书已在「系统设置 → 通用 → 关于本机 → 证书信任设置」中勾选完全信任；<br>3. 请从手机后台<strong>彻底划掉 Google App / Google One App</strong>（清除页面缓存），然后重新打开进入升级方案页，再回来刷新本页查看调试日志。</p></section>";
     }
     return "<section id=debug-logs><h2>🛠️ iOS 实时抓包与改写调试日志（最近 " + logs.length + " 条）</h2>" +
-      "<p class=note>实时记录每一条经过 <code>one.google.com</code> 的 HTTP 请求、RPC ID、正文长度、提取到的原始 SKU、实际改写结果及响应正文切片（点击导出 JSON 可一键发给开发者排查）。</p>" +
+      "<p class=note>实时记录每一条经过 <code>one.google.com</code> 的 HTTP 请求、RPC ID、正文长度、提取到的原始 SKU、实际改写结果及响应正文切片（点击导出 TXT / JSON 可一键发给开发者排查）。</p>" +
       "<div class=scroll><table><thead><tr><th>时间 / 状态</th><th>请求路径 &amp; RPC</th><th>发现的原始 SKU</th><th>实际改写结果</th><th>正文切片 / 长度</th></tr></thead><tbody>" +
       logs.slice().reverse().map(function (item) {
         var foundHtml = (Array.isArray(item.foundSkus) && item.foundSkus.length) ?
@@ -764,6 +800,25 @@ function createG1MappingConfig(store) {
           "<td>" + foundHtml + "</td><td>" + rewHtml + "</td>" +
           "<td><span class=note>长度: " + escape(item.bodyLen) + " B (" + escape(item.contentType || "") + ")</span><br><code style=\"font-size:12px;color:#46556b\">" + escape(item.snippet || "") + "</code></td></tr>";
       }).join("") + "</tbody></table></div></section>";
+  }
+  function iosCampaignTrapper() {
+    var links = [
+      { name: "1. Gemini 反向免卡试用横幅", url: "https://one.google.com/ai?utm_source=g1&utm_medium=ios&utm_campaign=G1_GEMINI_REVERSE_TRIAL_UPSELL_BANNER&g1_landing_page=75&hl=zh_CN" },
+      { name: "2. Gemini Pro 99% OFF (0.1折) 活动", url: "https://one.google.com/ai?utm_source=gemini&utm_medium=ios&utm_campaign=GEMINI_PRO_99P_PROMO&g1_landing_page=75&hl=zh_CN" },
+      { name: "3. 相册老用户召回特惠 (Photos Winback)", url: "https://one.google.com/ai?utm_source=photos&utm_medium=ios&utm_campaign=PHOTOS_WINBACK_PROMO&g1_landing_page=6&hl=zh_CN" },
+      { name: "4. 云端硬盘召回特惠 (Drive Winback)", url: "https://one.google.com/ai?utm_source=drive&utm_medium=ios&utm_campaign=DRIVE_WINBACK_PROMO&g1_landing_page=5&hl=zh_CN" },
+      { name: "5. Gemini Advanced 专属升级通道", url: "https://one.google.com/ai?utm_source=gemini&utm_medium=ios&utm_campaign=GEMINI_ADVANCED_UPSELL&g1_landing_page=65&hl=zh_CN" },
+      { name: "6. AI Ultra 5x/20x 推广横幅", url: "https://one.google.com/ai?utm_source=google_one&utm_medium=ios&utm_campaign=G1_AI_ULTRA_PROMO&g1_landing_page=75&hl=zh_CN" },
+      { name: "7. 学生 AI Pro 专属促销入口", url: "https://one.google.com/ai?utm_source=g1&utm_medium=ios&utm_campaign=STUDENT_AI_PRO_PROMO&g1_landing_page=75&hl=zh_CN" },
+      { name: "8. Google One 动态隐藏方案页 (/plans)", url: "https://one.google.com/plans?utm_source=g1&utm_medium=ios&utm_campaign=G1_DYNAMIC_PLANS_PROMO&g1_landing_page=2" }
+    ];
+    return "<section id=ios-campaign-trapper><h2>🚀 iOS 隐藏活动链接诱捕器（诱骗服务端吐出隐藏 SKU）</h2>" +
+      "<p class=note>保持小火箭开启，在 Safari 点击下方任意一条带特殊 <code>utm_campaign</code> 参数的链接打开 Google One 方案页。若当前 Google 账号命中某条隐藏促销资格，Google 服务端会在响应里直接下发专属隐藏 iOS SKU，并自动被本脚本收入下方「候选 SKU 清单」与「调试日志」！</p>" +
+      "<div class=preset-grid>" + links.map(function (item) {
+        return "<div class=preset style=\"border:1px solid #d7e0ec;border-radius:10px;padding:12px;background:#fafbfd\">" +
+          "<strong>" + escape(item.name) + "</strong><br><code style=\"font-size:12px;color:#46556b\">" + escape(item.url.replace("https://one.google.com", "")) + "</code>" +
+          "<div style=\"margin-top:10px\"><a class=primary style=\"display:inline-block;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:14px\" href=\"" + escape(item.url) + "\" target=\"_blank\" rel=\"noopener\">点击诱捕访问 →</a></div></div>";
+      }).join("") + "</div></section>";
   }
   var validConfig = config.status === "default" || config.status === "custom";
   var writable = !!(storageAvailable && typeof storage.write === "function" && config.status !== "unavailable");
@@ -892,7 +947,7 @@ function createG1MappingConfig(store) {
     noticeText ? "<p class=success role=status>" + escape(noticeText) + "</p>" : "",
     clearMessage ? "<p>" + escape(clearMessage) + "</p>" : "",
     storageAvailable ? "" : "<p>本地存储接口暂未就绪；此页尚未读取到采集记录。</p>",
-    presetTemplates(), debugLogSection(debugLogs), mappingEditor(),
+    presetTemplates(), iosCampaignTrapper(), debugLogSection(debugLogs), mappingEditor(),
     "<section><h2>采集运行记录</h2>",
     "<p>实际采集脚本：<code>" + escape(report.scan.version || "暂无记录") + "</code><br>实际采集模式：" + modeName(report.scan.mode) + "<br>" + scanVersionStatus + "</p>",
     "<p>已扫描文本响应：" + report.scan.scannedResponses + "；已记录非文本响应：" + report.scan.nonTextResponses +
@@ -922,5 +977,6 @@ function createG1MappingConfig(store) {
   ].join("");
   $done({ response: { status: responseStatus, headers: headers, body: html } });
 })();
+
 
 
