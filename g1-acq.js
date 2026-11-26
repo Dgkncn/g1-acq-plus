@@ -27,9 +27,7 @@ function createG1MappingConfig(store) {
 
   function defaults() {
     return [
-      { id: "default-2tb", match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true },
-      { id: "default-20tb", match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
-      { id: "default-30tb", match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.3months_ip_75p.acq", enabled: true }
+      { id: "default-20tb", match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
     ];
   }
 
@@ -37,8 +35,8 @@ function createG1MappingConfig(store) {
     return [
       {
         id: "pro-1yuan",
-        title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月 · 仅改20TB）",
-        description: "实测神级路径：清空其它干扰规则，仅把 Ultra 5x (20TB) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：点此应用后，进升级页点 Ultra 5x (20TB)。",
+        title: "✅ [存活·默认启用] 🔥 0.05折 / $0.29 / 1元开 Pro 5TB（前三月 99% OFF）",
+        description: "【2026-11-26 真机实测 100% 存活】仅把 Ultra 5x (20TB) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。美区实测 $0.29/月、印度区 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月！操作：进升级页点 Ultra 5x (20TB)，到手 Google AI Pro 5TB。",
         replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
@@ -46,8 +44,8 @@ function createG1MappingConfig(store) {
       },
       {
         id: "pro-1yuan-from-2tb",
-        title: "🔥 0.05折 / 1元开 Pro（99% OFF · 改2TB AI月付）",
-        description: "备选路径（当点 Ultra 5x 提示交易未完成时用这个）：仅把 Pro 月付 (g1.ios.2tb.ai.m) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p，不改年付避免冲突。操作：点此应用后，进升级页选「按月」点 Pro 5TB。",
+        title: "✅ [存活·备选入口] 🔥 0.05折 / $0.29 / 1元开 Pro 5TB（改 2TB AI 月付槽位）",
+        description: "【2026-11-26 真机实测存活】仅把 Pro 月付 (g1.ios.2tb.ai.m) 单独改写为 com.google.gemini.2tb.ai.m.3month_ip_99p，不改年付避免同 ID 冲突。操作：进升级页选「按月」点 Pro 5TB。",
         replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.2tb.ai.m", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
@@ -55,8 +53,8 @@ function createG1MappingConfig(store) {
       },
       {
         id: "tr-ultra-legacy",
-        title: "🇹🇷 土区 Ultra 20x / 30TB & 20TB 老定价直购",
-        description: "剥离 .v2 与 .ai.pro 后缀，调用土区 Apple Store 未涨价老 SKU：30TB 仅 ₺2,949.99/月（约3折），20TB 仅 ₺1,989.99/月（约4.1折）。（需土区 Apple ID + Google One 独立 App）",
+        title: "✅ [存活·土区真Ultra唯一低价] 🇹🇷 土区 Ultra 30TB (20x) & 20TB 老定价直购",
+        description: "【2026-11-26 真机实测 100% 存活】剥离 .v2 与 .ai.pro 后缀，调用 Apple Store 未涨价老 SKU：土区 30TB 仅 ₺2,949.99/月（约¥585/月，3折），20TB 仅 ₺1,989.99/月（约¥395/月，4.1折）。（需土区 Apple ID，美区 ID 弹窗显示美区原价）",
         replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ios.30tb.m", enabled: true },
@@ -64,9 +62,18 @@ function createG1MappingConfig(store) {
         ]
       },
       {
+        id: "pro-12months-90p",
+        title: "⚠️ [可弹窗但促销已停·回退原价] <s>2TB / Pro 5TB · 全年 12个月 1折 (90p)</s>",
+        description: "【2026-11-26 实测：商品 ID 仍存在可弹窗，但 Apple Store 后台已关闭 $1.99 首年 1 折属性，弹窗显示原价 $19.99/月】仅把 g1.ios.2tb.ai.m 改写为 g1.2tb.ai.12months_ip_90p。",
+        replaceAll: true,
+        rules: [
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.2tb.ai.12months_ip_90p", enabled: true }
+        ]
+      },
+      {
         id: "ultra-75p",
-        title: "⚡ 真 Ultra 20TB / 30TB · 三个月 2.5折 (75p)",
-        description: "v7.8+ 现役可用真 Ultra 折扣档：清空干扰规则，仅把 20TB 与 30TB 切换至三个月 75% OFF（实付 25%，美区 20TB=$24.99/月，30TB=$49.99/月）。",
+        title: "❌ [已拉闸下架] <s>真 Ultra 20TB / 30TB · 三个月 2.5折 (75p)</s>",
+        description: "【2026-11-26 实测已拉闸：点击提示「购买交易未完成」】原 g1.20tb.3months_ip_75p.acq 与 g1.ai.ultra.3months_ip_75p.acq 已从 iOS App Store 下架，仅留档备查。",
         replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.3months_ip_75p.acq", enabled: true },
@@ -75,21 +82,12 @@ function createG1MappingConfig(store) {
       },
       {
         id: "ultra-1m-free",
-        title: "🎁 真 Ultra 20TB / 30TB · 1个月 $0 免费试用",
-        description: "清空干扰规则，尝试调起真 Ultra 20TB (g1.20tb.1month_eft.acq) 与 30TB (g1.ai.ultra.1month_eft.acq) 1个月 $0 免费试用。",
+        title: "❌ [已拉闸下架] <s>真 Ultra 20TB / 30TB · 1个月 $0 免费试用</s>",
+        description: "【2026-11-26 实测已拉闸：点击提示「购买交易未完成」】原 g1.20tb.1month_eft.acq 与 g1.ai.ultra.1month_eft.acq 在 iOS 端已不可用，仅留档备查。",
         replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.1month_eft.acq", enabled: true },
           { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.1month_eft.acq", enabled: true }
-        ]
-      },
-      {
-        id: "pro-12months-90p",
-        title: "💎 2TB / Pro 5TB · 全年 12个月 1折 (90p · 单条无冲突)",
-        description: "仅把 Pro 月付 (g1.ios.2tb.ai.m) 精确改写为 g1.2tb.ai.12months_ip_90p（连续 12 个月 90% OFF 一折，美区 $1.99/月），避免 4 个 2TB 槽位共用 ID 冲突！操作：进升级页选「按月」点 Pro 5TB。",
-        replaceAll: true,
-        rules: [
-          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.2tb.ai.12months_ip_90p", enabled: true }
         ]
       },
       {
@@ -405,7 +403,7 @@ function createG1MappingConfig(store) {
 }
 
 (function () {
-  var VERSION = "g1-acq-v9.5-mappings";
+  var VERSION = "g1-acq-v9.6-mappings";
   var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
