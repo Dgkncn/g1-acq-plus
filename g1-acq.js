@@ -336,10 +336,12 @@ function createG1MappingConfig(store) {
 }
 
 (function () {
-  var VERSION = "g1-acq-v9.0-mappings";
+  var VERSION = "g1-acq-v9.1-mappings";
   var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
+  var DEBUG_KEY = "g1.debug.logs.v1";
+  var DEBUG_LIMIT = 25;
   var SCAN_LIMIT = 300;
   var RECENT_LIMIT = 10;
   var MAX_EVENT_COUNT = 9007199254740991;
@@ -359,8 +361,9 @@ function createG1MappingConfig(store) {
     " mappingRevision=" + mappingConfig.revision + " mode=" + MODE);
 
   var body = typeof $response === "object" && $response ? $response.body : undefined;
+  var foundSkusInThisResp = [];
   try {
-    collectOriginalSkus(body);
+    foundSkusInThisResp = collectOriginalSkus(body) || [];
   } catch (error) {
     console.log("[g1-acq] SKU collection unavailable");
   }
@@ -369,20 +372,17 @@ function createG1MappingConfig(store) {
   var isTargetEndpoint = /^https:\/\/one\.google\.com\/(?:u\/\d+\/)?(?:ai|plans|subscribe|upsell|about\/plans)(?:[/?#]|$)/.test(url) ||
     /^https:\/\/one\.google\.com\/(?:u\/\d+\/)?_\/[^?#]+\/data\/batchexecute(?:\?|$)/.test(url);
 
-  if (!isTargetEndpoint) {
-    $done({});
-    return;
-  }
-
   var mappings = Object.create(null);
   var hits = 0;
   var annualHits = 0;
   var out = body;
 
-  if (typeof body === "string" && !configError) {
+  if (isTargetEndpoint && typeof body === "string" && !configError) {
+    // Also support escaped dots (\u002e / \x2e) inside batchexecute JSON strings!
     out = body.replace(
-      /(^|[^A-Za-z0-9._@%-])((?:g1\.|com\.google\.(?:one|gemini)\.)[A-Za-z0-9._-]+)(?=$|[^A-Za-z0-9._-])/g,
-      function (match, before, id) {
+      /(^|[^A-Za-z0-9._@%-])((?:g1(?:\.|\\u002e|\\x2e)|com(?:\.|\\u002e|\\x2e)google(?:\.|\\u002e|\\x2e)(?:one|gemini)(?:\.|\\u002e|\\x2e))[A-Za-z0-9._\\-]+)(?=$|[^A-Za-z0-9._-])/g,
+      function (match, before, rawId) {
+        var id = rawId.replace(/\\u002e|\\x2e/gi, ".");
         var rule = mappingEngine.resolve(id, mappingConfig);
         if (!rule) return match;
         var isAnnual = id.indexOf(SOURCE_PREFIX) === 0 && id.length > SOURCE_PREFIX.length;
@@ -398,6 +398,16 @@ function createG1MappingConfig(store) {
   var sources = Object.keys(mappings).sort().map(function (id) {
     return mappings[id];
   });
+
+  // Always save live debug log entry for every one.google.com response
+  try {
+    saveDebugLog(url, body, isTargetEndpoint, foundSkusInThisResp, sources, hits, mappingConfig);
+  } catch (e) {}
+
+  if (!isTargetEndpoint) {
+    $done({});
+    return;
+  }
   var record = {
     schemaVersion: 1,
     version: VERSION,
@@ -537,6 +547,56 @@ function createG1MappingConfig(store) {
     console.log("[g1-acq] " + VERSION + " status=" + status + " addedCount=" + addedCount +
       " candidates=" + candidateCount + " omittedCount=" + omittedCount +
       " occurrences=" + hitCount + " saved=" + (stored ? "yes" : "no") + " mode=" + MODE);
+    return Object.keys(found).sort().map(function (k) { return k + " (x" + found[k] + ")"; });
+  }
+
+  function saveDebugLog(reqUrl, respBody, isTarget, skusFound, rewSources, rewHits, cfg) {
+    if (typeof $persistentStore === "undefined" || typeof $persistentStore.read !== "function") return;
+    var logs = [];
+    try {
+      var parsed = JSON.parse($persistentStore.read(DEBUG_KEY) || "[]");
+      if (Array.isArray(parsed)) logs = parsed;
+    } catch (e) { logs = []; }
+    var statusCode = (typeof $response === "object" && $response && $response.status) ? $response.status : 200;
+    var ctype = "";
+    try {
+      if ($response && $response.headers) {
+        var hkeys = Object.keys($response.headers);
+        for (var i = 0; i < hkeys.length; i++) {
+          if (hkeys[i].toLowerCase() === "content-type") { ctype = String($response.headers[hkeys[i]]); break; }
+        }
+      }
+    } catch (e) {}
+    var rpcMatch = /[?&]rpcids=([^&#]+)/.exec(reqUrl);
+    var shortUrl = reqUrl.replace(/^https:\/\/one\.google\.com/, "");
+    if (shortUrl.length > 180) shortUrl = shortUrl.slice(0, 180) + "...";
+    var snippet = "";
+    if (typeof respBody === "string") {
+      var skuIdx = respBody.search(/g1\.|com\.google\.(?:one|gemini)\./);
+      if (skuIdx >= 0) {
+        snippet = respBody.slice(Math.max(0, skuIdx - 40), Math.min(respBody.length, skuIdx + 200));
+      } else {
+        snippet = respBody.slice(0, 180);
+      }
+      snippet = snippet.replace(/\s+/g, " ");
+    }
+    logs.push({
+      at: new Date().toISOString(),
+      method: (typeof $request === "object" && $request && $request.method) ? String($request.method) : "GET",
+      status: statusCode,
+      url: shortUrl,
+      rpcids: rpcMatch ? decodeURIComponent(rpcMatch[1]) : "",
+      contentType: ctype.slice(0, 60),
+      bodyLen: typeof respBody === "string" ? respBody.length : -1,
+      isTargetEndpoint: !!isTarget,
+      foundSkus: skusFound.slice(0, 20),
+      rewritten: rewSources.map(function (s) { return s.id + " -> " + s.to + " (x" + s.count + ")"; }),
+      hitCount: rewHits,
+      activeRulesCount: (cfg && Array.isArray(cfg.rules)) ? cfg.rules.filter(function (r) { return r.enabled; }).length : 0,
+      snippet: snippet
+    });
+    if (logs.length > DEBUG_LIMIT) logs = logs.slice(-DEBUG_LIMIT);
+    $persistentStore.write(JSON.stringify(logs), DEBUG_KEY);
   }
 
   function safeRoute(requestUrl) {
