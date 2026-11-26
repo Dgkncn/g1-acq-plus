@@ -65,8 +65,9 @@ function createG1MappingConfig(store) {
       },
       {
         id: "ultra-75p",
-        title: "⚡ Ultra 20TB / 30TB · 三个月 2.5折 (75p)",
-        description: "v7.8+ 现役可用 Ultra 折扣档（原 90p 一折已拉闸）：20TB 与 30TB 切换至三个月 75% OFF（实付 25%）。",
+        title: "⚡ 真 Ultra 20TB / 30TB · 三个月 2.5折 (75p)",
+        description: "v7.8+ 现役可用真 Ultra 折扣档：清空干扰规则，仅把 20TB 与 30TB 切换至三个月 75% OFF（实付 25%，美区 20TB=$24.99/月，30TB=$49.99/月）。",
+        replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.3months_ip_75p.acq", enabled: true },
           { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.3months_ip_75p.acq", enabled: true }
@@ -74,8 +75,9 @@ function createG1MappingConfig(store) {
       },
       {
         id: "ultra-1m-free",
-        title: "🎁 Ultra 20TB / 30TB · 1个月 $0 免费试用",
-        description: "尝试调起 Ultra 20TB (g1.20tb.1month_eft.acq) 与 30TB (g1.ai.ultra.1month_eft.acq) 1个月 $0 免费试用。",
+        title: "🎁 真 Ultra 20TB / 30TB · 1个月 $0 免费试用",
+        description: "清空干扰规则，尝试调起真 Ultra 20TB (g1.20tb.1month_eft.acq) 与 30TB (g1.ai.ultra.1month_eft.acq) 1个月 $0 免费试用。",
+        replaceAll: true,
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.1month_eft.acq", enabled: true },
           { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.1month_eft.acq", enabled: true }
@@ -83,26 +85,47 @@ function createG1MappingConfig(store) {
       },
       {
         id: "pro-12months-90p",
-        title: "💎 2TB / Pro · 全年 12个月 1折 (90p)",
-        description: "将 g1.ios.2tb.* 前缀统一改写为 g1.2tb.ai.12months_ip_90p（连续 12 个月 90% OFF 一折，$1.99/月）。",
+        title: "💎 2TB / Pro 5TB · 全年 12个月 1折 (90p · 单条无冲突)",
+        description: "仅把 Pro 月付 (g1.ios.2tb.ai.m) 精确改写为 g1.2tb.ai.12months_ip_90p（连续 12 个月 90% OFF 一折，美区 $1.99/月），避免 4 个 2TB 槽位共用 ID 冲突！操作：进升级页选「按月」点 Pro 5TB。",
+        replaceAll: true,
         rules: [
-          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true }
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.2tb.ai.12months_ip_90p", enabled: true }
         ]
       },
       {
-        id: "pro-18m-free",
-        title: "👑 2TB / Pro 5TB · 18个月 $0 免费试用 (eft)",
-        description: "将 g1.ios.2tb.* 改写为全量扫描发现的 18个月免费试用档 g1.2tb.ai.18months_eft。",
+        id: "probe-batch-3-ultra-gemini",
+        title: "🕵️ 10槽位批量探测包 C（真 Ultra 20TB/30TB · com.google.gemini.* 99p/90p/免费家族）",
+        description: "专测真 Ultra (20TB / 30TB) 在 com.google.gemini.* 命名空间下是否存在 0.1折(99p)、1折(90p) 或 1~3个月 $0 免费试用隐藏档！把 10 个候选 Ultra 编号分别塞进页面 10 个按钮，应用后挨个点「按月/包年」所有按钮看哪个能弹出 Apple 付款框！",
+        replaceAll: true,
         rules: [
-          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.18months_eft", enabled: true }
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.20tb.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "com.google.gemini.30tb.ai.pro.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "com.google.gemini.20tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "com.google.gemini.30tb.ai.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "com.google.gemini.ai.ultra.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "com.google.gemini.20tb.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "com.google.gemini.30tb.ai.pro.m.1month_eft", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "com.google.gemini.20tb.m.3month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "com.google.gemini.30tb.ai.pro.m.3month_ip_90p", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "com.google.gemini.ai.ultra.m.1month_eft", enabled: true }
         ]
       },
       {
-        id: "pro-12m-free",
-        title: "👑 2TB / Pro 5TB · 12个月 $0 免费试用 (eft)",
-        description: "将 g1.ios.2tb.* 改写为 12个月免费试用档 g1.2tb.ai.12months_eft（或手动换为 g1.2tb.ai.subs_variant）。",
+        id: "probe-batch-4-ultra-g1",
+        title: "🕵️ 10槽位批量探测包 D（真 Ultra 20TB/30TB · g1.* & g1.ios.* 免费/折扣家族）",
+        description: "专测真 Ultra (20TB / 30TB) 在 g1.* 与 g1.ios.* 命名空间下的 10 个候选优惠档（含 1month_eft.acq、3months_ip_75p.acq、3months_ip_80p、g1.ios.20tb.m、g1.ios.30tb.m 等）。应用后挨个点页面上 10 个按钮看哪个能弹出真 Ultra 低价收银台！",
+        replaceAll: true,
         rules: [
-          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_eft", enabled: true }
+          { match: "exact", from: "g1.ios.20tb.m.v2", to: "g1.20tb.1month_eft.acq", enabled: true },
+          { match: "exact", from: "g1.ios.30tb.ai.pro.m", to: "g1.ai.ultra.1month_eft.acq", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.m", to: "g1.20tb.3months_ip_75p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.ai.a", to: "g1.ai.ultra.3months_ip_75p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.m", to: "g1.20tb.3months_ip_80p", enabled: true },
+          { match: "exact", from: "g1.ios.2tb.a", to: "g1.20tb.3months_ip_90p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.helium.m", to: "g1.ai.ultra.3months_ip_90p.acq", enabled: true },
+          { match: "exact", from: "g1.ios.helium.a", to: "g1.ios.20tb.m.3month_ip_99p", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.m", to: "g1.ios.20tb.m", enabled: true },
+          { match: "exact", from: "g1.ios.100gb.a", to: "g1.ios.30tb.m", enabled: true }
         ]
       },
       {
@@ -382,7 +405,7 @@ function createG1MappingConfig(store) {
 }
 
 (function () {
-  var VERSION = "g1-acq-v9.4-mappings";
+  var VERSION = "g1-acq-v9.5-mappings";
   var SOURCE_PREFIX = "g1.ios.2tb.";
   var TEST_KEY = "g1.pro.annual.test.v1";
   var SCAN_KEY = "g1.sku.scan.v1";
