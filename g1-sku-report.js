@@ -3,8 +3,8 @@
 
 (function () {
   var ROOT = "https://one.google.com/g1-sku-report";
-  var VERSION = "v9.1.0";
-  var COLLECTOR_VERSION = "g1-acq-v9.1-mappings";
+  var VERSION = "v9.2.0";
+  var COLLECTOR_VERSION = "g1-acq-v9.2-mappings";
   var DEBUG_KEY = "g1.debug.logs.v1";
   var MODE_NAMES = {
     discount75: "Ultra 三个月 75p（2.5折）",
@@ -44,10 +44,10 @@ function createG1MappingConfig(store) {
       {
         id: "pro-1yuan",
         title: "🔥 0.05折 / 1元开 Pro（99% OFF 前三月）",
-        description: "实测神级路径：把 Ultra 5x (20TB) 改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%）。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro 2TB/5TB。",
+        description: "实测神级路径：仅把 Ultra 5x (20TB) 精确改写为 com.google.gemini.2tb.ai.m.3month_ip_99p（立减99%），保持 2TB 为 12个月90p 避免多个套餐共用同一 SKU 报错。印度区仅 ₹10/月 ($0.11=0.05折)、印尼区 Rp 3,000/月 ($0.18=0.1折)、新加坡区 S$0.48/月 (0.17折)！操作：进升级页点 Ultra 5x，实际到手 Gemini AI Pro。",
         rules: [
           { match: "exact", from: "g1.ios.20tb.m.v2", to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true },
-          { match: "prefix", from: SOURCE_PREFIX, to: "com.google.gemini.2tb.ai.m.3month_ip_99p", enabled: true }
+          { match: "prefix", from: SOURCE_PREFIX, to: "g1.2tb.ai.12months_ip_90p", enabled: true }
         ]
       },
       {
@@ -362,6 +362,7 @@ function createG1MappingConfig(store) {
     return;
   }
   var exportJSON = method === "GET" && /(?:\?|&)format=json(?:&|$)/.test(url);
+  var exportTXT = method === "GET" && /(?:\?|&)format=txt(?:&|$)/.test(url);
   var storage = typeof $persistentStore !== "undefined" ? $persistentStore : null;
   var storageAvailable = !!(storage && typeof storage.read === "function");
   var engine = createG1MappingConfig(storage);
@@ -649,12 +650,56 @@ function createG1MappingConfig(store) {
     }
   };
 
-  console.log("[g1-sku-report] " + VERSION + " " + (exportJSON ? "json" : "html") +
+  console.log("[g1-sku-report] " + VERSION + " " + (exportJSON ? "json" : exportTXT ? "txt" : "html") +
     " storage=" + (storageAvailable ? "ready" : "unavailable") + " candidates=" + report.scan.skus.length);
   if (exportJSON) {
     headers["Content-Type"] = "application/json; charset=utf-8";
     headers["Content-Disposition"] = 'attachment; filename="g1-sku-report.json"';
     $done({ response: { status: 200, headers: headers, body: JSON.stringify(report, null, 2) } });
+    return;
+  }
+  if (exportTXT) {
+    headers["Content-Type"] = "text/plain; charset=utf-8";
+    headers["Content-Disposition"] = 'attachment; filename="g1-debug-log.txt"';
+    var txtLines = [
+      "====================================================================",
+      "G1 ACQ Plus (" + VERSION + ") — iOS 实时抓包与改写调试日志报告",
+      "导出时间 (UTC): " + new Date().toISOString(),
+      "当前模式: " + modeName(report.configuredMode) + " | 2TB前缀目标: " + (report.configuredTarget || "无"),
+      "====================================================================",
+      "",
+      "【一、当前启用的映射规则】"
+    ];
+    config.rules.forEach(function (r, idx) {
+      txtLines.push((idx + 1) + ". [" + (r.enabled ? "启用" : "停用") + "][" + r.match + "] " + r.from + " -> " + r.to);
+    });
+    txtLines.push("", "【二、最近一次映射执行汇总】");
+    txtLines.push("脚本版本: " + (report.test.version || "暂无") + " | 状态: " + (report.test.status || "暂无") +
+      " | 总替换次数: " + report.test.hitCount + " | 2TB替换次数: " + report.test.annualHitCount +
+      " | 执行时间: " + (report.test.updatedAt || "暂无"));
+    report.test.matchedFrom.forEach(function (m) {
+      txtLines.push("  * " + m.id + " -> " + (m.to || "") + " (x" + m.count + ")");
+    });
+    txtLines.push("", "【三、iOS 实时抓包与改写调试日志 (最近 " + debugLogs.length + " 条，按时间倒序)】");
+    debugLogs.slice().reverse().forEach(function (item, idx) {
+      txtLines.push("--------------------------------------------------------------------");
+      txtLines.push("#" + (idx + 1) + " [" + (item.at || "") + "] HTTP " + (item.status || 200) + " " + (item.method || "GET") + " " + (item.url || ""));
+      if (item.rpcids || item.country || item.currency) {
+        txtLines.push("   RPC: " + (item.rpcids || "-") + " | 账号国家/地区: " + (item.country || "-") + " | 币种: " + (item.currency || "-"));
+      }
+      txtLines.push("   正文长度: " + item.bodyLen + " B (" + (item.contentType || "") + ") | 是否改写端点: " + (item.isTargetEndpoint ? "是" : "否"));
+      txtLines.push("   发现原始 SKU: " + ((Array.isArray(item.foundSkus) && item.foundSkus.length) ? item.foundSkus.join(", ") : "无"));
+      txtLines.push("   实际改写结果: " + ((Array.isArray(item.rewritten) && item.rewritten.length) ? item.rewritten.join(", ") : "0 命中 (启用规则数:" + (item.activeRulesCount || 0) + ")"));
+      txtLines.push("   正文切片: " + (item.snippet || ""));
+    });
+    txtLines.push("", "【四、累计采集到的候选 SKU (" + report.scan.skus.length + " 个)】");
+    report.scan.skus.forEach(function (s) {
+      txtLines.push("  - " + s.id + " (x" + s.count + ", lastSeen=" + s.lastSeen + ")");
+    });
+    txtLines.push("", "====================================================================");
+    txtLines.push("有问题联系推特：https://x.com/zixunclub");
+    txtLines.push("====================================================================");
+    $done({ response: { status: 200, headers: headers, body: txtLines.join("\n") } });
     return;
   }
 
@@ -704,7 +749,8 @@ function createG1MappingConfig(store) {
           (item.isTargetEndpoint ? "<span style=\"color:#9b2420\">0 命中 (规则数:" + (item.activeRulesCount || 0) + ")</span>" : "<span class=note>非改写路径</span>");
         return "<tr><td>" + escape((item.at || "").replace("T", " ").slice(0, 19)) + "<br><span class=badge>HTTP " + escape(item.status || 200) + "</span></td>" +
           "<td><strong>" + escape(item.method || "GET") + "</strong> <code>" + escape(item.url || "") + "</code>" +
-          (item.rpcids ? "<br><span class=badge style=\"background:#eef3ff;color:#1259be\">rpcids=" + escape(item.rpcids) + "</span>" : "") + "</td>" +
+          (item.rpcids ? "<br><span class=badge style=\"background:#eef3ff;color:#1259be\">rpcids=" + escape(item.rpcids) + "</span>" : "") +
+          ((item.country || item.currency) ? "<br><span class=badge style=\"background:#fff4e5;color:#9a5b13\">地区=" + escape(item.country || "?") + " / 币种=" + escape(item.currency || "?") + "</span>" : "") + "</td>" +
           "<td>" + foundHtml + "</td><td>" + rewHtml + "</td>" +
           "<td><span class=note>长度: " + escape(item.bodyLen) + " B (" + escape(item.contentType || "") + ")</span><br><code style=\"font-size:12px;color:#46556b\">" + escape(item.snippet || "") + "</code></td></tr>";
       }).join("") + "</tbody></table></div></section>";
@@ -829,7 +875,7 @@ function createG1MappingConfig(store) {
     "<h1>Google One SKU 管理</h1>",
     "<p class=badge>本机脚本已接管 · " + VERSION + "</p>",
     "<p><strong>当前报告入口：" + modeName(report.configuredMode) + "</strong></p>",
-    "<nav class=actions aria-label=报告操作><form method=get action=\"" + ROOT + "\"><button type=submit name=format value=json>导出 JSON</button></form><a href=\"" + ROOT + "\">刷新报告</a></nav>",
+    "<nav class=actions aria-label=报告操作><form method=get action=\"" + ROOT + "\"><button class=primary type=submit name=format value=txt>📄 导出日志到 TXT 文本</button></form><form method=get action=\"" + ROOT + "\"><button type=submit name=format value=json>导出 JSON</button></form><a href=\"" + ROOT + "\">刷新报告</a></nav>",
     "<p class=note>此页由当前设备的 Shadowrocket 生成；地址栏沿用 one.google.com，映射配置与采集记录保存在当前设备。</p>",
     "<p class=note>保持一个 G1 ACQ 模块开启即可：先采集原始响应中的编号，再按已保存的规则改写。</p>",
     actionError ? "<p class=error role=alert>" + escape(actionError) + "</p>" : "",
